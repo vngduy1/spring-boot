@@ -1,17 +1,17 @@
-package dvn.local.dvnjs.modules.users.dtos;
+package dvn.local.dvnjs.modules.users.resources;
 
-// ログインレスポンスを表すDTOクラス
+// ログインレスポンスを表すUserResourceクラス
 // クライアントへトークンとユーザー情報を返すために使用される
-public class LoginResponse {
+public class LoginResource {
     
     // JWTなどの認証トークン
     private final String token;
 
     // ログインしたユーザーの情報
-    private final UserDTO user;
+    private final UserResource user;
 
     // コンストラクタ（トークンとユーザー情報を受け取る）
-    public LoginResponse(String token, UserDTO user) {
+    public LoginResource(String token, UserResource user) {
         this.token = token;
         this.user = user;
     }
@@ -22,7 +22,7 @@ public class LoginResponse {
     }
 
     // ユーザー情報を取得
-    public UserDTO getUser() {
+    public UserResource getUser() {
         return user;
     }
 }

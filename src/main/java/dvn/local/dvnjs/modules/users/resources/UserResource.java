@@ -1,10 +1,10 @@
-package dvn.local.dvnjs.modules.users.dtos;
+package dvn.local.dvnjs.modules.users.resources;
 
-public class UserDTO {
+public class UserResource {
     private final Long id;
     private String email;
 
-    public UserDTO(
+    public UserResource(
         Long id,
         String email
     ) {
