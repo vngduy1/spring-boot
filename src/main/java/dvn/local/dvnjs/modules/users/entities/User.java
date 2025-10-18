@@ -46,7 +46,7 @@ public class User {
     private LocalDateTime createAt;
 
     // 更新日時（更新時のみ設定）
-    @Column(name="update_at", updatable=false)
+    @Column(name="updated_at", updatable=false)
     private LocalDateTime updateAt;
 
     // レコード作成前に呼び出される（作成日時を自動設定）
@@ -79,7 +79,7 @@ public class User {
     }
 
     // ユーザーカタログIDを設定
-    public void setUser_catalogue_id(Long userCatalogueId) {
+    public void setUserCatalogueId(Long userCatalogueId) {
         this.userCatalogueId = userCatalogueId;
     }
 
@@ -152,5 +152,20 @@ public class User {
     public LocalDateTime getUpdatedAt() {
         return updateAt;
     }
+
+    // 引数付きコンストラクタ（ユーザー情報をまとめて初期化するために使用）
+    // name, email, password, userCatalogueId, phone の各値を受け取り、フィールドに代入する
+    // → new User("Nam", "example@mail.com", "pass", 1L, "0901234567") のように一行で生成できる
+    public User(String name, String email, String password, Long userCatalogueId, String phone) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.userCatalogueId = userCatalogueId;
+        this.phone = phone;
+    }
+
+    // デフォルトコンストラクタ（JPA がエンティティを生成する際に必要）
+    // 引数なしでインスタンス化できるようにするため必須
+    public User() {}
 
 }

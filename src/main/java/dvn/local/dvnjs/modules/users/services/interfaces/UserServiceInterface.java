@@ -1,11 +1,11 @@
 package dvn.local.dvnjs.modules.users.services.interfaces;
 
-import dvn.local.dvnjs.modules.users.dtos.LoginRequest;
-import dvn.local.dvnjs.modules.users.dtos.LoginResponse;
+import dvn.local.dvnjs.modules.users.requests.LoginRequest;
+import dvn.local.dvnjs.modules.users.resources.LoginResource;
 
 public interface UserServiceInterface {
 
-    LoginResponse login(LoginRequest request);
+    LoginResource login(LoginRequest request);
 
     
     

@@ -1,4 +1,4 @@
-package dvn.local.dvnjs.modules.users.dtos;
+package dvn.local.dvnjs.modules.users.requests;
 
 // ログインリクエストを表すDTOクラス
 // クライアントから送信されたメールアドレスとパスワードを受け取るために使用
