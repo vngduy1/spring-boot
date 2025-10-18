@@ -79,7 +79,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             //    Hibernate が INSERT 時にエラーになります。スキーマとエンティティのアノテーション
             //    （@Column(name="update_at") など）を一致させてください。
             userRepository.save(user); // 1件登録（永続化）
-            logger.info("DatabaseSeeder: 初期ユーザーを登録しました。");
+            // logger.info("DatabaseSeeder: 初期ユーザーを登録しました。");
         } else {
             logger.info("DatabaseSeeder: users テーブルにデータが存在するため、初期データの登録をスキップします。");  // Bỏ qua vì bảng không trống
         }
