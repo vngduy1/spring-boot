@@ -97,8 +97,29 @@
 		<dependency>
 			<groupId>org.hibernate.validator</groupId>
 			<artifactId>hibernate-validator</artifactId>
-		</dependency>	
+		</dependency>
 
+		<!-- JWT（JSON Web Token）ライブラリ -->
+		<!-- jjwt-api: JWTのAPI定義 -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.11.5</version>
+		</dependency>
+        <!-- jjwt-impl: JWTの実装（実行時に使用） -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.11.5</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- jjwt-jackson: JSON変換用（Jackson依存、実行時に使用） -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.11.5</version>
+			<scope>runtime</scope>
+		</dependency>	
 
 	</dependencies>
 
