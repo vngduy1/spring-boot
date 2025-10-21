@@ -8,6 +8,7 @@ import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -34,11 +35,23 @@ public class JwtService {
         // トークンを構築して返す
         return Jwts.builder()
                 .setSubject(String.valueOf(userId)) // サブジェクト（ここではユーザーID）
-                .claim("email", email)              // カスタムクレームとしてメールアドレスを追加
-                .setIssuedAt(now)                   // 発行日時
-                .setExpiration(expiryDate)          // 有効期限
+                .claim("email", email) // カスタムクレームとしてメールアドレスを追加
+                .setIssuedAt(now) // 発行日時
+                .setExpiration(expiryDate) // 有効期限
                 .signWith(key, SignatureAlgorithm.HS512) // HS512アルゴリズムで署名
-                .compact();                         // トークン文字列を生成
+                .compact(); // トークン文字列を生成
     }
+    
+    public String getUserIdFromJwt(String token) {
+        Claims claims = Jwts.parserBuilder()
+                            .setSigningKey(key)
+                            .build()
+                            .parseClaimsJws(token)
+                            .getBody();
+    
+        return claims.getSubject();
+    }
+    
+
 }
 
