@@ -47,10 +47,9 @@ public class UserService extends BaseService implements UserServiceInterface {
         try {
             // --- 入力されたメールアドレスでユーザーを検索 ---
             User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() ->
+                    .orElseThrow(() ->
                     // ユーザーが存在しない場合、BadCredentialsExceptionを投げる
-                    new BadCredentialsException("メールアドレスあるいはパスワードが正しくありません。")
-                );
+                    new BadCredentialsException("メールアドレスあるいはパスワードが正しくありません。"));
 
             // --- パスワードの一致確認 ---
             // 入力されたパスワードとDB上の暗号化済みパスワードを比較
@@ -64,10 +63,9 @@ public class UserService extends BaseService implements UserServiceInterface {
 
             // --- レスポンス用のユーザー情報を作成 ---
             UserResource userResource = new UserResource(
-                user.getId(),
-                user.getEmail(),
-                user.getName()
-            );
+                    user.getId(),
+                    user.getEmail(),
+                    user.getName());
 
             // --- 成功時のレスポンス（トークン＋ユーザー情報）を返す ---
             return new LoginResource(token, userResource);
@@ -82,12 +80,12 @@ public class UserService extends BaseService implements UserServiceInterface {
             errors.put("message", e.getMessage());
 
             ErrorResource errorResource = new ErrorResource(
-                "認証処理中にエラーが発生しました。",
-                errors
-            );
+                    "認証処理中にエラーが発生しました。",
+                    errors);
 
             // --- エラー内容を返す ---
             return errorResource;
         }
     }
+    
 }
