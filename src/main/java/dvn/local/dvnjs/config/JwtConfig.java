@@ -14,6 +14,10 @@ public class JwtConfig {
     @Value("${jwt.expiration}")
     private Long expirationTime;
 
+    // application.properties の "jwt.issuer" を読み込む（{}の入れ子は不要）
+    @Value("${jwt.issuer}")
+    private String issuer;
+
     // 秘密鍵を取得するメソッド
     public String getSecretKey() {
         return secretKey;
@@ -22,5 +26,10 @@ public class JwtConfig {
     // 有効期限（ミリ秒）を取得するメソッド
     public Long getExpirationTime() {
         return expirationTime;
+    }
+
+    // 
+    public String getIssuer() {
+        return issuer;
     }
 }
