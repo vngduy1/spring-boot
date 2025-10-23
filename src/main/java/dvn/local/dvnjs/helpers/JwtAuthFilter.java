@@ -28,97 +28,160 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 import dvn.local.dvnjs.modules.users.services.impl.CustomUserDetailsService;
 import dvn.local.dvnjs.services.JwtService;
-import jakarta.validation.constraints.NotNull;
+import lombok.NonNull;
 
 
-// JWT認証を行うためのフィルタークラス
-// リクエストごとに一度だけ実行される（OncePerRequestFilterを継承）
+/**
+ * 🔐【クラス概要】
+ * JwtAuthFilter クラスは、HTTPリクエストに含まれる JWT（JSON Web Token）を検証し、
+ * 正しいトークンである場合にユーザー認証を行うフィルターです。
+ *
+ * 主な役割：
+ *  - 各リクエストごとに一度だけ実行（OncePerRequestFilter 継承）
+ *  - Authorization ヘッダーから "Bearer <token>" を取得
+ *  - トークンのフォーマットと有効性を確認
+ *  - JWT から userId を抽出し、Spring Security のコンテキストに認証情報を設定
+ *  - エラー発生時は JSON 形式でエラーレスポンスを返す
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
     
-    // JWTを検証・生成するサービスクラス
+    // JWTの生成・検証を行うサービス
     private final JwtService jwtService;
+
+    // ユーザー情報を取得するサービス
     private final CustomUserDetailsService customUserDetailsService;
+
+    // JSON出力用（エラーレスポンスなど）
     private final ObjectMapper objectMapper;
 
-    // ユーザー情報を取得するためのサービス
-    // private final UserDetailsService userDetailsService;
-
+    // ロガーの設定
     private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
 
-    // フィルターのメイン処理
+
+    /**
+     * 【メソッド概要】
+     * 特定のURL（例：ログインAPI）はフィルタを適用しないように除外する。
+     * 
+     * @param request 現在のHTTPリクエスト
+     * @return true の場合、このフィルタをスキップ
+     */
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getRequestURI();
+        // /api/v1/auth/login のリクエストはフィルタ対象外にする
+        return path.startsWith("/api/v1/auth/login");
+    }
+
+
+    /**
+     * 【メソッド概要】
+     * JWT認証のメイン処理を行う。
+     * 1. AuthorizationヘッダーからJWTを取得
+     * 2. トークン形式と内容を検証
+     * 3. ユーザー情報を読み込み、認証コンテキストを設定
+     * 4. エラー発生時はJSON形式でレスポンスを返す
+     */
     @Override
     public void doFilterInternal(
-        @Nonnull HttpServletRequest request,    // クライアントからのHTTPリクエスト
-        @Nonnull HttpServletResponse response,  // サーバーからのHTTPレスポンス
-        @Nonnull FilterChain filterChain        // 次のフィルターへの処理チェーン
+        @Nonnull HttpServletRequest request,    // クライアントからのリクエスト
+        @Nonnull HttpServletResponse response,  // サーバーからのレスポンス
+        @Nonnull FilterChain filterChain        // 次のフィルターへのチェーン
     ) throws ServletException, IOException {
 
-        // Authorizationヘッダーの取得（形式: "Bearer <JWT>" を想定）
-        final String authHeader = request.getHeader("Authorization");
+        try {
+            // Authorizationヘッダーの取得（形式: "Bearer <JWT>"）
+            final String authHeader = request.getHeader("Authorization");
 
-        // JWTトークンおよびメールアドレス（トークンから抽出）用の変数
-        final String jwt;
-        final String userId;
+            final String jwt;
+            final String userId;
 
-        // Authorizationヘッダーが無い、または "Bearer " で始まらない場合は401を返す
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            // ヘッダーが存在しない、またはBearerトークンでない場合はエラー返却
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                sendErrorResponse(response,
+                        request, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "認証できませんでした。",
+                        "トークンが見つかりません。");
+                return;
+            }
 
-            sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED, "認証できませんでした。", "トークンは見つかりません。");
-            // 後続フィルターへ処理を渡す
-            // filterChain.doFilter(request, response);
-            return; // 処理をここで終了（次のフィルタへ進めない）
+            // "Bearer " の7文字をスキップしてトークン本体を抽出
+            jwt = authHeader.substring(7);
+
+            // JWTトークンからユーザーIDを取得
+            userId = jwtService.getUserIdFromJwt(jwt);
+
+            // トークンの形式をチェック
+            if (!jwtService.isTokenFormatValid(jwt)) {
+                sendErrorResponse(response,
+                        request, HttpServletResponse.SC_UNAUTHORIZED,
+                        "認証できませんでした。",
+                        "トークンの定義は正しくありません。");
+                return;
+            }
+            
+            // SecurityContext に認証情報が設定されていない場合
+            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);
+
+                // 認証トークンの作成（必要に応じて有効化）
+                // UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                //         userDetails,
+                //         null,
+                //         userDetails.getAuthorities());
+                // authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                logger.info("JWT認証確認成功: " + userDetails.getUsername());
+            }
+
+            // 次のフィルターへ処理を渡す
+            filterChain.doFilter(request, response);
+
+        } catch (Exception e) {
+            // 想定外のエラー発生時の処理
+            sendErrorResponse(response,
+                    request, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "認証できませんでした。",
+                    "トークンの定義は正しくありません。");
         }
-
-        // "Bearer " の7文字をスキップして実トークン部分を取り出す
-        jwt = authHeader.substring(7);
-
-        // トークンからユーザー識別子（例：メールアドレス）を抽出
-        userId = jwtService.getUserIdFromJwt(jwt); // ← 実装側のメソッド名に合わせてください　
-
-        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);
-
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.getAuthorities());
-
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            SecurityContextHolder.getContext().setAuthentication(authToken);
-
-            logger.info("確認成功" + userDetails.getUsername());
-        }
-
-        // 後続フィルターへ処理を渡す
-        filterChain.doFilter(request, response);
-
     }
-    
+
+
+    /**
+     * 【メソッド概要】
+     * エラー発生時にJSON形式でレスポンスを返す共通メソッド。
+     *
+     * @param response HTTPレスポンス
+     * @param request HTTPリクエスト
+     * @param statusCode ステータスコード
+     * @param error エラー概要
+     * @param message 詳細メッセージ
+     */
     private void sendErrorResponse(
-         HttpServletResponse response,
-         HttpServletRequest request,
+        HttpServletResponse response,
+        HttpServletRequest request,
         int statusCode,
         String error,
         String message
-    )throws IOException {
+    ) throws IOException {
+
+        // ステータスコード、エンコーディング、ContentTypeの設定
         response.setStatus(statusCode);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
 
+        // エラー情報をマップに格納
         Map<String, Object> errorResponse = new HashMap<>();
-
         errorResponse.put("timestamp", System.currentTimeMillis());
         errorResponse.put("status", statusCode);
         errorResponse.put("error", error);
         errorResponse.put("message", message);
         errorResponse.put("path", request.getRequestURI());
 
+        // MapをJSONに変換して出力
         String jsonResponse = objectMapper.writeValueAsString(errorResponse);
-
         response.getWriter().write(jsonResponse);
-
     }
-
 }
