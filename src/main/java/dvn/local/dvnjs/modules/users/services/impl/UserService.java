@@ -65,7 +65,8 @@ public class UserService extends BaseService implements UserServiceInterface {
             UserResource userResource = new UserResource(
                     user.getId(),
                     user.getEmail(),
-                    user.getName());
+                    user.getName(),
+                    user.getPhone());
 
             // --- 成功時のレスポンス（トークン＋ユーザー情報）を返す ---
             return new LoginResource(token, userResource);

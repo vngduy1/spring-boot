@@ -5,7 +5,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
+import lombok.NonNull;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,18 +23,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 import dvn.local.dvnjs.modules.users.services.impl.CustomUserDetailsService;
 import dvn.local.dvnjs.services.JwtService;
-import lombok.NonNull;
+
 
 
 /**
@@ -120,18 +120,48 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         "トークンの定義は正しくありません。");
                 return;
             }
+
+            // 署名検証：失敗なら401
+            if (!jwtService.isSignatureValid(jwt)) {
+                sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
+                        "認証できませんでした。", "トークンの署名が不正です。");
+                return;
+            }
+
+            // 発行者チェック：不一致なら401
+            if (!jwtService.isIssuerToken(jwt)) {
+                sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
+                        "認証できませんでした。", "トークンの発行者が不正です。");
+                return;
+            }
+
+            // 期限切れチェック：期限切れなら401
+            if (jwtService.isTokenExpired(jwt)) {
+                sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
+                        "認証できませんでした。", "トークンの有効期限が切れています。");
+                return;
+            }
             
             // SecurityContext に認証情報が設定されていない場合
             if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);
 
+                final String emailFromToken = jwtService.getEmailFromJwt(jwt);
+
+                if (!emailFromToken.equals(userDetails.getUsername())) {
+                    sendErrorResponse(response,
+                        request, HttpServletResponse.SC_UNAUTHORIZED,
+                        "認証できませんでした。",
+                        "ユーザートークンが正くありません。");
+                    return;
+                }
                 // 認証トークンの作成（必要に応じて有効化）
-                // UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                //         userDetails,
-                //         null,
-                //         userDetails.getAuthorities());
-                // authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                // SecurityContextHolder.getContext().setAuthentication(authToken);
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
 
                 logger.info("JWT認証確認成功: " + userDetails.getUsername());
             }
@@ -139,12 +169,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // 次のフィルターへ処理を渡す
             filterChain.doFilter(request, response);
 
-        } catch (Exception e) {
+        } catch (ServletException | IOException e) {
             // 想定外のエラー発生時の処理
             sendErrorResponse(response,
                     request, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "認証できませんでした。",
-                    "トークンの定義は正しくありません。");
+                    "インターネットのエラー発生しました。");
         }
     }
 

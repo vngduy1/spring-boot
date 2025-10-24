@@ -3,24 +3,18 @@ package dvn.local.dvnjs.services;
 import org.springframework.stereotype.Service;
 
 import dvn.local.dvnjs.config.JwtConfig;
-import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
 import java.util.function.Function;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.core.userdetails.UserDetails;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 
 /**
  * 【概要】
@@ -48,9 +42,6 @@ public class JwtService {
 
     // 署名・検証に使う秘密鍵
     private final Key key;
-
-    // ロガー（※クラス名は JwtService を使うのが自然）
-    private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
 
     /**
      * コンストラクタ：設定を受け取り、署名用Keyを初期化
@@ -110,56 +101,6 @@ public class JwtService {
     }
 
     /**
-     * トークンの総合検証。
-     * 形式・署名・有効期限・発行者・ユーザー一致の観点で false/true を返す。
-     *
-     * @param token       検証対象のJWT
-     * @param userDetails 照合用ユーザー（Spring Security）
-     * @return 妥当なら true、いずれか不正なら false
-     */
-    public boolean isValidToken(String token, UserDetails userDetails) {
-        try {
-            // 1) 形式（header.payload.signature の3部構成）
-            if (!isTokenFormatValid(token)) {
-                logger.error("トークンの形式が不正です。");
-                return false;
-            }
-
-            // 2) 署名妥当性（鍵で検証）
-            if (!isSignatureValid(token)) {
-                logger.error("トークン署名の検証に失敗しました。");
-                return false;
-            }
-
-            // 3) 期限切れ（exp）の確認
-            //    ※ isTokenExpired は「期限切れなら true」を返す実装
-            if (isTokenExpired(token)) {
-                logger.error("トークンの有効期限が切れています。");
-                return false;
-            }
-
-            // 4) 発行者(iss)の確認
-            if (!isIssuerToken(token)) {
-                logger.error("トークンの発行者が不正です。");
-                return false;
-            }
-
-            // 5) ユーザー一致（email と Spring Security の username を突合）
-            final String emailFromToken = getEmailFromJwt(token);
-            if (!emailFromToken.equals(userDetails.getUsername())) {
-                logger.error("トークンのユーザー情報が一致しません。");
-                return false;
-            }
-
-            return true;
-        } catch (Exception e) {
-            // 予期しない例外（パース失敗等）
-            logger.error("トークン検証に失敗しました。", e);
-        }
-        return false;
-    }
-
-    /**
      * トークンの形式が「ヘッダ.ペイロード.署名」の3分割になっているかをざっくり確認。
      */
     public boolean isTokenFormatValid(String token) {
@@ -180,18 +121,12 @@ public class JwtService {
             Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
-                .parseClaimsJws(token); // 成功すれば署名OK
+                    .parseClaimsJws(token); // 成功すれば署名OK
+                
             return true;
-        } catch (MalformedJwtException e) {
-            logger.error("JWTトークンの形式が不正です。", e);
-        } catch (ExpiredJwtException e) {
-            logger.error("JWTトークンの有効期限が切れています。", e);
-        } catch (UnsupportedJwtException e) {
-            logger.error("サポートされていないJWTトークンです。", e);
-        } catch (IllegalArgumentException e) {
-            logger.error("JWTトークンが空または不正です。", e);
-        }
-        return false;
+        } catch (SignatureException e) {
+            return false;
+        } 
     }
 
     /**
@@ -200,7 +135,7 @@ public class JwtService {
      */
     public Key getSigningKey() {
         byte[] keyBytes = jwtConfig.getSecretKey().getBytes();
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(Base64.getEncoder().encode(keyBytes));
     }
 
     /**
@@ -208,8 +143,12 @@ public class JwtService {
      * @return 期限切れなら true、まだ有効なら false
      */
     public boolean isTokenExpired(String token) {
-        final Date expiration = getClaimFromToken(token, Claims::getExpiration);
-        return expiration.before(new Date());
+        try {
+            final Date expiration = getClaimFromToken(token, Claims::getExpiration);
+            return expiration.before(new Date());
+        } catch (ExpiredJwtException e) {
+            return false;
+        }
     }
 
     /**
