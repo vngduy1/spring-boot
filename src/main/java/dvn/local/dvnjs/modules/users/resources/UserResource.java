@@ -1,7 +1,17 @@
 package dvn.local.dvnjs.modules.users.resources;
 
+import lombok.Builder;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 // ユーザー情報を表すリソースクラス
 // （クライアントへ返すユーザーデータのフォーマットを定義）
+@Data
+@Builder
+@RequiredArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserResource {
 
     // ユーザーID
@@ -13,30 +23,6 @@ public class UserResource {
     // ユーザー名
     private final String name;
 
-    // コンストラクタ（IDとメールアドレスを受け取る）
-    // ※注意：nameが引数に含まれていないため、常にnullになります。
-    public UserResource(
-        Long id,
-        String email,
-        String name
-    ) {
-        this.id = id;
-        this.email = email;
-        this.name = name; 
-    }
-
-    // ユーザーIDを返す
-    public Long getId() {
-        return id;
-    }
-
-    // メールアドレスを返す
-    public String getEmail() {
-        return email;
-    }
-
-    // ユーザー名を返す
-    public String getName() {
-        return name;
-    }
+    // 電話番号
+    private final String phone;
 }

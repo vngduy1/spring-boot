@@ -1,8 +1,12 @@
 package dvn.local.dvnjs.modules.users.controllers;
 
+// import org.slf4j.Logger;
+// import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +24,9 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
+    // ロガーの設定
+    // private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+
     /**
      * 現在のユーザー情報を取得するエンドポイント
      * 
@@ -30,7 +37,10 @@ public class UserController {
      */
     @GetMapping("me") // POSTメソッドで /api/v1/me にアクセスされたときに実行される
     public ResponseEntity<?> me() {
-        String email = "admin@example.com";
+        // String email = "admin@example.com";
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
         // --- ユーザーをメールアドレスで検索 ---
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
@@ -39,11 +49,12 @@ public class UserController {
                 );
 
         // --- レスポンス用のユーザー情報を作成 ---
-        UserResource userResource = new UserResource(
-            user.getId(),
-            user.getEmail(),
-            user.getName()
-        );
+        UserResource userResource = UserResource.builder()
+        .id(user.getId())
+        .email(user.getEmail())
+        .name(user.getName())    
+        .phone(user.getPhone())
+        .build();
 
         SuccessResource<UserResource> response = new SuccessResource<>("SUCCESS", userResource);
 
