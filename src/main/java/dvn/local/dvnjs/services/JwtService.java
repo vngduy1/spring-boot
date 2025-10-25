@@ -1,5 +1,6 @@
 package dvn.local.dvnjs.services;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import dvn.local.dvnjs.config.JwtConfig;
@@ -9,6 +10,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.function.Function;
 
+import dvn.local.dvnjs.modules.users.repositories.BlacklistedTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -42,6 +44,9 @@ public class JwtService {
 
     // 署名・検証に使う秘密鍵
     private final Key key;
+
+    @Autowired
+    private BlacklistedTokenRepository blacklistedTokenRepository;
 
     /**
      * コンストラクタ：設定を受け取り、署名用Keyを初期化
@@ -145,7 +150,7 @@ public class JwtService {
     public boolean isTokenExpired(String token) {
         try {
             final Date expiration = getClaimFromToken(token, Claims::getExpiration);
-            return expiration.before(new Date());
+            return expiration.after(new Date());
         } catch (ExpiredJwtException e) {
             return false;
         }
@@ -160,9 +165,20 @@ public class JwtService {
     }
 
     /**
+     * トークンがブラックリストに登録されているかを確認する。
+     * 
+     * @param token チェック対象のJWTトークン
+     * @return ブラックリストに存在する場合は true、存在しない場合は false
+     */
+    public boolean isBlackListedToken(String token) {
+        // BlacklistedTokenRepository を使用してDB内に該当トークンがあるか確認
+        return blacklistedTokenRepository.existsByToken(token);
+    }
+
+    /**
      * すべてのクレーム（Claims）を取得する内部ヘルパー。
      */
-    private Claims getAllClaimsFromToken(String token) {
+    public Claims getAllClaimsFromToken(String token) {
         return Jwts.parserBuilder()
                    .setSigningKey(getSigningKey())
                    .build()
@@ -174,7 +190,7 @@ public class JwtService {
      * 汎用クレーム取得ヘルパー。
      * @param claimsResolver Claims から必要な値を取り出す関数
      */
-    private <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
+    public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = getAllClaimsFromToken(token);
         return claimsResolver.apply(claims);
     }

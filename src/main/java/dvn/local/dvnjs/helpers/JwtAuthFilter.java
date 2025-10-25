@@ -136,10 +136,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             // 期限切れチェック：期限切れなら401
-            if (jwtService.isTokenExpired(jwt)) {
+            if (!jwtService.isTokenExpired(jwt)) {
                 sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
                         "認証できませんでした。", "トークンの有効期限が切れています。");
                 return;
+            }
+
+            //トークンフロックなら
+            if (jwtService.isBlackListedToken(jwt)) {
+                sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
+                "認証できませんでした。", "トークンはブロックされました。");
+            return;
             }
             
             // SecurityContext に認証情報が設定されていない場合
