@@ -1,18 +1,26 @@
 package dvn.local.dvnjs.services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import dvn.local.dvnjs.config.JwtConfig;
+import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 
 import java.security.Key;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 import java.util.function.Function;
 
+import dvn.local.dvnjs.modules.users.entities.RefreshToken;
 import dvn.local.dvnjs.modules.users.repositories.BlacklistedTokenRepository;
+import dvn.local.dvnjs.modules.users.repositories.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -45,8 +53,13 @@ public class JwtService {
     // 署名・検証に使う秘密鍵
     private final Key key;
 
+    private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
+
     @Autowired
     private BlacklistedTokenRepository blacklistedTokenRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
 
     /**
      * コンストラクタ：設定を受け取り、署名用Keyを初期化
@@ -72,12 +85,36 @@ public class JwtService {
         // ビルダーで JWT を組み立て、署名して返却
         return Jwts.builder()
                 .setSubject(String.valueOf(userId)) // Subject（ここでは userId）
-                .claim("email", email)               // カスタムクレーム
-                .setIssuer(jwtConfig.getIssuer())    // 発行者(iss)
-                .setIssuedAt(now)                    // 発行時刻(iat)
-                .setExpiration(expiryDate)           // 期限(exp)
+                .claim("email", email) // カスタムクレーム
+                .setIssuer(jwtConfig.getIssuer()) // 発行者(iss)
+                .setIssuedAt(now) // 発行時刻(iat)
+                .setExpiration(expiryDate) // 期限(exp)
                 .signWith(key, SignatureAlgorithm.HS512) // HS512で署名
                 .compact();
+    }
+
+    public String generateRefreshToken(Long userId, String email) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtConfig.getRefreshTokenExpirationTime());
+
+        String refreshToken = Jwts.builder()
+                .setSubject(String.valueOf(userId)) // Subject（ここでは userId）
+                .claim("email", email) // カスタムクレーム
+                .setIssuer(jwtConfig.getIssuer()) // 発行者(iss)
+                .setIssuedAt(now) // 発行時刻(iat)
+                .setExpiration(expiryDate) // 期限(exp)
+                .signWith(key, SignatureAlgorithm.HS512) // HS512で署名
+                .compact();
+
+        LocalDateTime localExpiryDate = expiryDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(); 
+        RefreshToken insertToken = new RefreshToken();
+        insertToken.setRefreshToken(refreshToken);
+        insertToken.setExpiryDate(localExpiryDate);
+        insertToken.setUserId(userId);
+
+        refreshTokenRepository.save(insertToken);
+        
+        return refreshToken;
     }
 
     /**
@@ -125,11 +162,10 @@ public class JwtService {
         try {
             Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
-                .build()
+                .build() 
                     .parseClaimsJws(token); // 成功すれば署名OK
-                
             return true;
-        } catch (SignatureException e) {
+        } catch (Exception e) {
             return false;
         } 
     }
@@ -149,11 +185,17 @@ public class JwtService {
      */
     public boolean isTokenExpired(String token) {
         try {
-            final Date expiration = getClaimFromToken(token, Claims::getExpiration);
-            return expiration.after(new Date());
-        } catch (ExpiredJwtException e) {
+            Claims claims = getAllClaimsFromToken(token);
+
+            if (claims != null) {
+                return claims.getExpiration().before(new Date());
+            } else {
+                return true;
+            }   
+        } catch (Exception e) {
             return false;
         }
+        
     }
 
     /**
@@ -179,11 +221,18 @@ public class JwtService {
      * すべてのクレーム（Claims）を取得する内部ヘルパー。
      */
     public Claims getAllClaimsFromToken(String token) {
-        return Jwts.parserBuilder()
-                   .setSigningKey(getSigningKey())
-                   .build()
-                   .parseClaimsJws(token)
-                   .getBody();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            return null;
+        } catch (JwtException e) {
+            logger.error("トークンが無効です: {}", e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -193,5 +242,20 @@ public class JwtService {
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = getAllClaimsFromToken(token);
         return claimsResolver.apply(claims);
+    }
+
+    public boolean isRefreshTokenValid(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
+                   
+            RefreshToken refreshToken = refreshTokenRepository.findByRefreshToken(token).orElseThrow(() ->
+            new RuntimeException("リフレッシュトークンが存在ございません。"));
+
+            final Date expiration = getClaimFromToken(refreshToken.getRefreshToken(), Claims::getExpiration);
+
+            return expiration.after(new Date());
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

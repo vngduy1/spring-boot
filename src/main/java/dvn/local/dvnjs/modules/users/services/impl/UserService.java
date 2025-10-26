@@ -61,6 +61,8 @@ public class UserService extends BaseService implements UserServiceInterface {
             // --- JWTトークン生成 ---
             String token = jwtService.generateToken(user.getId(), user.getEmail());
 
+            String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail());
+
             // --- レスポンス用のユーザー情報を作成 ---
             UserResource userResource = new UserResource(
                     user.getId(),
@@ -69,7 +71,7 @@ public class UserService extends BaseService implements UserServiceInterface {
                     user.getPhone());
 
             // --- 成功時のレスポンス（トークン＋ユーザー情報）を返す ---
-            return new LoginResource(token, userResource);
+            return new LoginResource(token, refreshToken, userResource);
 
         } catch (BadCredentialsException e) {
             // --- 認証失敗時の処理 ---

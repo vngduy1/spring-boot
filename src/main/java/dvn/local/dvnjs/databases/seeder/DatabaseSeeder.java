@@ -35,7 +35,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        logger.info("seeder running 1234:...");
+        // logger.info("seeder running 1234:...");
 
         // logger.info("running");
         // テーブルが空の場合のみ実行

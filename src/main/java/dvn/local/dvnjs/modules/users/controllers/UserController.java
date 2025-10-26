@@ -1,7 +1,7 @@
 package dvn.local.dvnjs.modules.users.controllers;
 
-// import org.slf4j.Logger;
-// import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +25,7 @@ public class UserController {
     private UserRepository userRepository;
 
     // ロガーの設定
-    // private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     /**
      * 現在のユーザー情報を取得するエンドポイント
