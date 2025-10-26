@@ -109,9 +109,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // "Bearer " の7文字をスキップしてトークン本体を抽出
             jwt = authHeader.substring(7);
 
-            // JWTトークンからユーザーIDを取得
-            userId = jwtService.getUserIdFromJwt(jwt);
-
             // トークンの形式をチェック
             if (!jwtService.isTokenFormatValid(jwt)) {
                 sendErrorResponse(response,
@@ -121,13 +118,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
+
+            // JWTトークンからユーザーIDを取得
+            userId = jwtService.getUserIdFromJwt(jwt);
+
             // 署名検証：失敗なら401
             if (!jwtService.isSignatureValid(jwt)) {
                 sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
                         "認証できませんでした。", "トークンの署名が不正です。");
                 return;
             }
-
             // 発行者チェック：不一致なら401
             if (!jwtService.isIssuerToken(jwt)) {
                 sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
@@ -136,7 +136,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             // 期限切れチェック：期限切れなら401
-            if (!jwtService.isTokenExpired(jwt)) {
+            if (jwtService.isTokenExpired(jwt)) {
+
                 sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
                         "認証できませんでした。", "トークンの有効期限が切れています。");
                 return;
@@ -145,8 +146,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             //トークンフロックなら
             if (jwtService.isBlackListedToken(jwt)) {
                 sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
-                "認証できませんでした。", "トークンはブロックされました。");
-            return;
+                        "認証できませんでした。", "トークンはブロックされました。");
+                return;
             }
             
             // SecurityContext に認証情報が設定されていない場合
@@ -170,7 +171,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                logger.info("JWT認証確認成功: " + userDetails.getUsername());
             }
 
             // 次のフィルターへ処理を渡す

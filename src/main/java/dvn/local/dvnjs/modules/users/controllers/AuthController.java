@@ -1,5 +1,7 @@
 package dvn.local.dvnjs.modules.users.controllers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,9 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 import dvn.local.dvnjs.modules.users.requests.BlacklistTokenRequest;
 import dvn.local.dvnjs.modules.users.requests.LoginRequest;
+import dvn.local.dvnjs.modules.users.requests.RefreshTokenRequest;
 import dvn.local.dvnjs.modules.users.resources.LoginResource;
+import dvn.local.dvnjs.modules.users.resources.TokenResource;
 import dvn.local.dvnjs.modules.users.services.impl.BlackListService;
 import dvn.local.dvnjs.modules.users.services.interfaces.UserServiceInterface;
 import dvn.local.dvnjs.resources.ErrorResource;
@@ -28,6 +33,9 @@ public class AuthController {
 
     // UserServiceを使って認証処理を実行するための依存オブジェクト
     private final UserServiceInterface userService;
+
+        private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
+
 
     // BlackListServiceクラスを自動的に注入する（DI：依存性注入）
     // 他のクラスでBlackListServiceの機能を利用できるようにする
@@ -113,6 +121,16 @@ public class AuthController {
             return ResponseEntity.internalServerError()
                     .body(new MessageResource("ネットワークエラーが発生しました。"));
         }
+    }
+
+    // POSTメソッドで /api/v1/auth/refresh にアクセスされたときに実行される。
+    // ブラックリストにトークンを追加するためのAPIエンドポイント。
+    @PostMapping("refresh") 
+    public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        String refreshToken = request.getRefreshToken();
+            
+        logger.info(refreshToken);
+        return ResponseEntity.ok("test");
     }
 
 }

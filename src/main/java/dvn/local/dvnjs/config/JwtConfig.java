@@ -11,6 +11,10 @@ public class JwtConfig {
     private String secretKey;
 
     // application.properties の "jwt.expiration" を読み込む（{}の入れ子は不要）
+    @Value("${jwt.expirationRefreshToken}")
+    private Long refreshTokenExpirationTime;
+
+    // application.properties の "jwt.expiration" を読み込む（{}の入れ子は不要）
     @Value("${jwt.expiration}")
     private Long expirationTime;
 
@@ -26,6 +30,10 @@ public class JwtConfig {
     // 有効期限（ミリ秒）を取得するメソッド
     public Long getExpirationTime() {
         return expirationTime;
+    }
+
+    public Long getRefreshTokenExpirationTime() {
+        return refreshTokenExpirationTime;
     }
 
     // 
