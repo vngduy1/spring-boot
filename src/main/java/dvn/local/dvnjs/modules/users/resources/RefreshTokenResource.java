@@ -1,5 +1,6 @@
 package dvn.local.dvnjs.modules.users.resources;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
@@ -7,9 +8,11 @@ import lombok.RequiredArgsConstructor;
 // クライアントへトークンとユーザー情報を返すために使用される
 @Data
 @RequiredArgsConstructor
-public class TokenResource {
+@AllArgsConstructor
+public class RefreshTokenResource {
     
     // JWTなどの認証トークン
     private final String token;
+    private String refreshToken;
 
 }
