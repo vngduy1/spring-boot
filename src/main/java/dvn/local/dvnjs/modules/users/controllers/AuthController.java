@@ -1,5 +1,7 @@
 package dvn.local.dvnjs.modules.users.controllers;
 
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,15 +16,18 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
+import dvn.local.dvnjs.modules.users.entities.RefreshToken;
+import dvn.local.dvnjs.modules.users.repositories.RefreshTokenRepository;
 import dvn.local.dvnjs.modules.users.requests.BlacklistTokenRequest;
 import dvn.local.dvnjs.modules.users.requests.LoginRequest;
 import dvn.local.dvnjs.modules.users.requests.RefreshTokenRequest;
 import dvn.local.dvnjs.modules.users.resources.LoginResource;
-import dvn.local.dvnjs.modules.users.resources.TokenResource;
+import dvn.local.dvnjs.modules.users.resources.RefreshTokenResource;
 import dvn.local.dvnjs.modules.users.services.impl.BlackListService;
 import dvn.local.dvnjs.modules.users.services.interfaces.UserServiceInterface;
 import dvn.local.dvnjs.resources.ErrorResource;
 import dvn.local.dvnjs.resources.MessageResource;
+import dvn.local.dvnjs.services.JwtService;
 
 import jakarta.validation.Valid;
 
@@ -41,6 +46,12 @@ public class AuthController {
     // 他のクラスでBlackListServiceの機能を利用できるようにする
     @Autowired
     private BlackListService blackListService;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private JwtService jwtService;
 
     // コンストラクタインジェクション（Springが自動でUserServiceを注入）
     public AuthController(UserServiceInterface userService) {
@@ -129,8 +140,29 @@ public class AuthController {
     public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
             
-        logger.info(refreshToken);
-        return ResponseEntity.ok("test");
+        logger.info("refreshToken1");
+        if (!jwtService.isRefreshTokenValid(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    new MessageResource("リフレッシュトークンが無効です。"));
+        }
+        logger.info("refreshToken");
+
+        Optional<RefreshToken> dbRefreshTokenOptional = refreshTokenRepository.findByRefreshToken(refreshToken);
+
+        if (dbRefreshTokenOptional.isPresent()) {
+
+            RefreshToken dbRefreshToken = dbRefreshTokenOptional.get();
+            Long userId = dbRefreshToken.getUserId();
+            String email = dbRefreshToken.getUser().getEmail();
+
+            String newToken = jwtService.generateToken(userId, email);
+            String newRefreshToken = jwtService.generateRefreshToken(userId, email);
+
+            return ResponseEntity.ok(new RefreshTokenResource(newToken, newRefreshToken));
+
+        }
+        return ResponseEntity.internalServerError()
+                    .body(new MessageResource("ネットワークエラーが発生しました。"));
     }
 
 }

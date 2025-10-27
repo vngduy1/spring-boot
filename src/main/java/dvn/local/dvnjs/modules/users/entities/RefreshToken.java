@@ -10,6 +10,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 import lombok.Data;
@@ -50,4 +52,8 @@ public class RefreshToken {
      @UpdateTimestamp
      @Column(name = "updated_at") 
      private LocalDateTime updatedAt;
+
+     @OneToOne
+     @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
+     private User user;
 }

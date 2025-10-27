@@ -71,7 +71,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
         // /api/v1/auth/login のリクエストはフィルタ対象外にする
-        return path.startsWith("/api/v1/auth/login");
+        return path.startsWith("/api/v1/auth/login") ||
+            path.startsWith("/api/v1/auth/refresh");
     }
 
 
@@ -118,9 +119,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
+            // 期限切れチェック：期限切れなら401
+            if (jwtService.isTokenExpired(jwt)) {
 
-            // JWTトークンからユーザーIDを取得
-            userId = jwtService.getUserIdFromJwt(jwt);
+                sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
+                        "認証できませんでした。", "トークンの有効期限が切れています。");
+                return;
+            }
 
             // 署名検証：失敗なら401
             if (!jwtService.isSignatureValid(jwt)) {
@@ -135,14 +140,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 期限切れチェック：期限切れなら401
-            if (jwtService.isTokenExpired(jwt)) {
-
-                sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
-                        "認証できませんでした。", "トークンの有効期限が切れています。");
-                return;
-            }
-
             //トークンフロックなら
             if (jwtService.isBlackListedToken(jwt)) {
                 sendErrorResponse(response, request, HttpServletResponse.SC_UNAUTHORIZED,
@@ -150,6 +147,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
             
+            // JWTトークンからユーザーIDを取得
+            userId = jwtService.getUserIdFromJwt(jwt);
+
             // SecurityContext に認証情報が設定されていない場合
             if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);

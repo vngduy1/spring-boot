@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 
 import dvn.local.dvnjs.modules.users.entities.RefreshToken;
@@ -97,23 +99,35 @@ public class JwtService {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtConfig.getRefreshTokenExpirationTime());
 
-        String refreshToken = Jwts.builder()
-                .setSubject(String.valueOf(userId)) // Subject（ここでは userId）
-                .claim("email", email) // カスタムクレーム
-                .setIssuer(jwtConfig.getIssuer()) // 発行者(iss)
-                .setIssuedAt(now) // 発行時刻(iat)
-                .setExpiration(expiryDate) // 期限(exp)
-                .signWith(key, SignatureAlgorithm.HS512) // HS512で署名
-                .compact();
+        // String refreshToken = Jwts.builder()
+        //         .setSubject(String.valueOf(userId)) // Subject（ここでは userId）
+        //         .claim("email", email) // カスタムクレーム
+        //         .setIssuer(jwtConfig.getIssuer()) // 発行者(iss)
+        //         .setIssuedAt(now) // 発行時刻(iat)
+        //         .setExpiration(expiryDate) // 期限(exp)
+        //         .signWith(key, SignatureAlgorithm.HS512) // HS512で署名
+        //         .compact();
+
+        String refreshToken = UUID.randomUUID().toString();
 
         LocalDateTime localExpiryDate = expiryDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(); 
-        RefreshToken insertToken = new RefreshToken();
-        insertToken.setRefreshToken(refreshToken);
-        insertToken.setExpiryDate(localExpiryDate);
-        insertToken.setUserId(userId);
 
-        refreshTokenRepository.save(insertToken);
-        
+        Optional<RefreshToken> optionalRefreshToken = refreshTokenRepository.findByUserId(userId);
+        if (optionalRefreshToken.isPresent()) {
+            RefreshToken DbRefreshToken = optionalRefreshToken.get();
+            DbRefreshToken.setRefreshToken(refreshToken);
+            DbRefreshToken.setExpiryDate(localExpiryDate);
+            
+            refreshTokenRepository.save(DbRefreshToken);
+        } else {
+            RefreshToken insertToken = new RefreshToken();
+            insertToken.setRefreshToken(refreshToken);
+            insertToken.setExpiryDate(localExpiryDate);
+            insertToken.setUserId(userId);
+    
+            refreshTokenRepository.save(insertToken);
+            
+        }
         return refreshToken;
     }
 
@@ -185,13 +199,17 @@ public class JwtService {
      */
     public boolean isTokenExpired(String token) {
         try {
-            Claims claims = getAllClaimsFromToken(token);
+            Date expiration = getClaimFromToken(token, Claims::getExpiration);
 
-            if (claims != null) {
-                return claims.getExpiration().before(new Date());
-            } else {
-                return true;
-            }   
+            return expiration.before(new Date());
+            // Claims claims = getAllClaimsFromToken(token);
+
+            // if (claims != null) {
+            //     return claims.getExpiration().before(new Date());
+            // } else {
+            //     return true;
+            // }  
+
         } catch (Exception e) {
             return false;
         }
@@ -240,21 +258,27 @@ public class JwtService {
      * @param claimsResolver Claims から必要な値を取り出す関数
      */
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = getAllClaimsFromToken(token);
-        return claimsResolver.apply(claims);
+        try {
+            final Claims claims = getAllClaimsFromToken(token);
+            return claimsResolver.apply(claims);
+        } catch (NullPointerException e) {
+            return null;
+        }
     }
 
     public boolean isRefreshTokenValid(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token);
-                   
+            logger.info(token);
             RefreshToken refreshToken = refreshTokenRepository.findByRefreshToken(token).orElseThrow(() ->
             new RuntimeException("リフレッシュトークンが存在ございません。"));
 
-            final Date expiration = getClaimFromToken(refreshToken.getRefreshToken(), Claims::getExpiration);
+            logger.info("token");
+            LocalDateTime expirationLocalDateTime = refreshToken.getExpiryDate();
+            Date expirationDate = Date.from(expirationLocalDateTime.atZone(ZoneId.systemDefault()).toInstant());
+            // final Date expiration = refreshToken.getExpiryDate();
 
-            return expiration.after(new Date());
-        } catch (Exception e) {
+            return expirationDate.after(new Date());
+        } catch (RuntimeException e) {
             return false;
         }
     }
