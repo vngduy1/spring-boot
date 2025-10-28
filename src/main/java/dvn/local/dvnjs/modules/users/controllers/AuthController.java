@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import ch.qos.logback.core.subst.Token;
 import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 import dvn.local.dvnjs.modules.users.entities.RefreshToken;
 import dvn.local.dvnjs.modules.users.repositories.RefreshTokenRepository;
@@ -39,7 +40,7 @@ public class AuthController {
     // UserServiceを使って認証処理を実行するための依存オブジェクト
     private final UserServiceInterface userService;
 
-        private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
+    private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
 
 
     // BlackListServiceクラスを自動的に注入する（DI：依存性注入）
@@ -134,35 +135,57 @@ public class AuthController {
         }
     }
 
-    // POSTメソッドで /api/v1/auth/refresh にアクセスされたときに実行される。
-    // ブラックリストにトークンを追加するためのAPIエンドポイント。
+    // リフレッシュトークンを使って新しいアクセストークン・リフレッシュトークンを発行するAPI
+    // POST /api/v1/auth/refresh
     @PostMapping("refresh") 
     public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        // クライアントから送信されたリフレッシュトークンを取得
         String refreshToken = request.getRefreshToken();
-            
-        logger.info("refreshToken1");
+        logger.info("refreshToken"); // デバッグ用ログ（呼び出されたことを確認する）
+
+        // 1. トークン形式や署名などが正しいかをチェック
+        //    無効なトークンの場合は 401 (UNAUTHORIZED) を返す
         if (!jwtService.isRefreshTokenValid(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                    new MessageResource("リフレッシュトークンが無効です。"));
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(new MessageResource("リフレッシュトークンが無効です。"));
         }
-        logger.info("refreshToken");
 
-        Optional<RefreshToken> dbRefreshTokenOptional = refreshTokenRepository.findByRefreshToken(refreshToken);
+        // 2. DBに保存しているリフレッシュトークンを検索
+        //    → ブラックリスト対応や手動ログアウト済みトークンを弾くため
+        Optional<RefreshToken> dbRefreshTokenOptional =
+                refreshTokenRepository.findByRefreshToken(refreshToken);
 
+        // 3. DBにトークンが存在する場合のみ、新しいトークンを発行する
         if (dbRefreshTokenOptional.isPresent()) {
 
+            // DBに保存されているトークン情報を取得
             RefreshToken dbRefreshToken = dbRefreshTokenOptional.get();
+
+            // ユーザーIDを取得
             Long userId = dbRefreshToken.getUserId();
+
+            // 対象ユーザーのメールアドレスを取得
             String email = dbRefreshToken.getUser().getEmail();
 
+            // 新しいアクセストークンを生成
             String newToken = jwtService.generateToken(userId, email);
+
+            // 新しいリフレッシュトークンを生成
             String newRefreshToken = jwtService.generateRefreshToken(userId, email);
 
-            return ResponseEntity.ok(new RefreshTokenResource(newToken, newRefreshToken));
-
+            // クライアントに新しいトークンセットを返却 (200 OK)
+            return ResponseEntity.ok(
+                    new RefreshTokenResource(newToken, newRefreshToken)
+            );
         }
-        return ResponseEntity.internalServerError()
-                    .body(new MessageResource("ネットワークエラーが発生しました。"));
+
+        // 4. ここまで来るのは想定外ケース
+        //    例：DBにトークンが見つからない、DBアクセス異常など
+        //    → サーバー側の問題として 500 エラーを返す
+        return ResponseEntity
+                .internalServerError()
+                .body(new MessageResource("ネットワークエラーが発生しました。"));
     }
 
 }

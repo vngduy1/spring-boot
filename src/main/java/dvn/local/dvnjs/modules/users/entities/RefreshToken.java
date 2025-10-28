@@ -53,6 +53,9 @@ public class RefreshToken {
      @Column(name = "updated_at") 
      private LocalDateTime updatedAt;
 
+     // ユーザー情報との1対1の関連を定義
+     // user_id を外部キーとしてUserテーブルの id と関連付ける
+     // このエンティティで user_id を直接変更しないよう insertable=false, updatable=false に設定
      @OneToOne
      @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
      private User user;

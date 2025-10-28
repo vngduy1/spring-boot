@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 
 import dvn.local.dvnjs.config.JwtConfig;
 import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
+import dvn.local.dvnjs.modules.users.entities.RefreshToken;
+import dvn.local.dvnjs.modules.users.repositories.BlacklistedTokenRepository;
+import dvn.local.dvnjs.modules.users.repositories.RefreshTokenRepository;
 
 import java.security.Key;
 import java.time.LocalDateTime;
@@ -17,16 +20,12 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
-import dvn.local.dvnjs.modules.users.entities.RefreshToken;
-import dvn.local.dvnjs.modules.users.repositories.BlacklistedTokenRepository;
-import dvn.local.dvnjs.modules.users.repositories.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.SignatureException;
 
 /**
  * 【概要】
@@ -55,6 +54,7 @@ public class JwtService {
     // 署名・検証に使う秘密鍵
     private final Key key;
 
+    //デバッグ用
     private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
 
     @Autowired
@@ -95,39 +95,58 @@ public class JwtService {
                 .compact();
     }
 
+    /**
+     * リフレッシュトークンを生成し、データベースに保存または更新するメソッド。
+     * 
+     * <p>
+     * ・ユーザーIDに紐づくトークンが既に存在する場合：  
+     * 　　既存レコードを更新（トークン文字列と有効期限を再設定）  
+     * ・存在しない場合：  
+     * 　　新規レコードとして挿入
+     * </p>
+     * 
+     * @param userId 対象ユーザーのID
+     * @param email  対象ユーザーのメールアドレス（ログ用や将来拡張用）
+     * @return 生成された新しいリフレッシュトークン文字列
+     */
     public String generateRefreshToken(Long userId, String email) {
+
+        // 現在時刻を取得
         Date now = new Date();
+
+        // 有効期限を計算（設定ファイルの値を使用）
         Date expiryDate = new Date(now.getTime() + jwtConfig.getRefreshTokenExpirationTime());
 
-        // String refreshToken = Jwts.builder()
-        //         .setSubject(String.valueOf(userId)) // Subject（ここでは userId）
-        //         .claim("email", email) // カスタムクレーム
-        //         .setIssuer(jwtConfig.getIssuer()) // 発行者(iss)
-        //         .setIssuedAt(now) // 発行時刻(iat)
-        //         .setExpiration(expiryDate) // 期限(exp)
-        //         .signWith(key, SignatureAlgorithm.HS512) // HS512で署名
-        //         .compact();
-
+        // ランダムなUUIDを使って新しいリフレッシュトークンを生成
         String refreshToken = UUID.randomUUID().toString();
 
-        LocalDateTime localExpiryDate = expiryDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime(); 
+        // Date型 → LocalDateTime型へ変換（DB登録用）
+        LocalDateTime localExpiryDate =
+                expiryDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
 
+        // ユーザーIDに紐づく既存のリフレッシュトークンを検索
         Optional<RefreshToken> optionalRefreshToken = refreshTokenRepository.findByUserId(userId);
+
         if (optionalRefreshToken.isPresent()) {
-            RefreshToken DbRefreshToken = optionalRefreshToken.get();
-            DbRefreshToken.setRefreshToken(refreshToken);
-            DbRefreshToken.setExpiryDate(localExpiryDate);
-            
-            refreshTokenRepository.save(DbRefreshToken);
+            // 既存レコードがある場合は更新処理を行う
+            RefreshToken dbRefreshToken = optionalRefreshToken.get();
+            dbRefreshToken.setRefreshToken(refreshToken);
+            dbRefreshToken.setExpiryDate(localExpiryDate);
+
+            // 更新後のトークン情報を保存
+            refreshTokenRepository.save(dbRefreshToken);
         } else {
+            // 既存レコードがない場合は新規作成
             RefreshToken insertToken = new RefreshToken();
             insertToken.setRefreshToken(refreshToken);
             insertToken.setExpiryDate(localExpiryDate);
             insertToken.setUserId(userId);
-    
+
+            // 新しいトークン情報を保存
             refreshTokenRepository.save(insertToken);
-            
         }
+
+        // クライアント側で利用するため、新しいトークン文字列を返却
         return refreshToken;
     }
 
@@ -177,9 +196,9 @@ public class JwtService {
             Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build() 
-                    .parseClaimsJws(token); // 成功すれば署名OK
+                    .parseClaimsJws(token); 
             return true;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             return false;
         } 
     }
@@ -200,24 +219,14 @@ public class JwtService {
     public boolean isTokenExpired(String token) {
         try {
             Date expiration = getClaimFromToken(token, Claims::getExpiration);
-
             return expiration.before(new Date());
-            // Claims claims = getAllClaimsFromToken(token);
-
-            // if (claims != null) {
-            //     return claims.getExpiration().before(new Date());
-            // } else {
-            //     return true;
-            // }  
-
         } catch (Exception e) {
             return false;
         }
-        
     }
 
     /**
-     * 発行者(iss) が設定と一致するかを返す。
+     * 発行者(isIssuerToken) が設定と一致するかを返す。
      */
     public boolean isIssuerToken(String token) {
         String tokenIssuer = getClaimFromToken(token, Claims::getIssuer);
@@ -255,31 +264,61 @@ public class JwtService {
 
     /**
      * 汎用クレーム取得ヘルパー。
-     * @param claimsResolver Claims から必要な値を取り出す関数
+     * 
+     * <p>
+     * JWTトークンから任意のクレーム値を取得するための汎用メソッド。  
+     * 例：トークンから「サブジェクト（ユーザーID）」や「有効期限」などを抽出する際に使用する。
+     * </p>
+     *
+     * @param <T>          取得する値の型（例：String、Date、Booleanなど）
+     * @param token        対象のJWTトークン文字列
+     * @param claimsResolver Claimsオブジェクトから目的の値を取り出す関数
+     * @return 取得したクレーム値。トークンがnullまたは不正な場合は null を返す。
      */
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
         try {
+            // トークンを解析して全クレーム情報を取得
             final Claims claims = getAllClaimsFromToken(token);
+
+            // 指定された関数（claimsResolver）を使って目的の値を抽出
             return claimsResolver.apply(claims);
+
         } catch (NullPointerException e) {
+            // トークンがnullまたは解析に失敗した場合は null を返す
             return null;
         }
     }
 
+    /**
+     * リフレッシュトークンの有効性を検証するメソッド。
+     * 
+     * <p>
+     * データベース上に該当トークンが存在し、かつ有効期限を過ぎていない場合に true を返す。  
+     * 不正または期限切れのトークンである場合は false を返す。
+     * </p>
+     *
+     * @param token チェック対象のリフレッシュトークン文字列
+     * @return トークンが有効であれば true、無効または存在しない場合は false
+     */
     public boolean isRefreshTokenValid(String token) {
         try {
-            logger.info(token);
+            // DBから該当のリフレッシュトークン情報を検索
             RefreshToken refreshToken = refreshTokenRepository.findByRefreshToken(token).orElseThrow(() ->
-            new RuntimeException("リフレッシュトークンが存在ございません。"));
+                new RuntimeException("リフレッシュトークンが存在ございません。"));
 
-            logger.info("token");
+            // DBに保存されている有効期限（LocalDateTime型）を取得
             LocalDateTime expirationLocalDateTime = refreshToken.getExpiryDate();
-            Date expirationDate = Date.from(expirationLocalDateTime.atZone(ZoneId.systemDefault()).toInstant());
-            // final Date expiration = refreshToken.getExpiryDate();
 
+            // LocalDateTime → Date に変換（比較用）
+            Date expirationDate = Date.from(expirationLocalDateTime.atZone(ZoneId.systemDefault()).toInstant());
+
+            // 現在時刻と比較して、まだ有効期限内であれば true を返す
             return expirationDate.after(new Date());
-        } catch (RuntimeException e) {
+
+        } catch (Exception e) {
+            // トークンが存在しない、または例外が発生した場合は無効とみなし false を返す
             return false;
         }
     }
+
 }
