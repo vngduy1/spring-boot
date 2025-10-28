@@ -13,6 +13,7 @@ public class RefreshTokenResource {
     
     // JWTなどの認証トークン
     private final String token;
+    //リフレッシュトークン
     private String refreshToken;
 
 }

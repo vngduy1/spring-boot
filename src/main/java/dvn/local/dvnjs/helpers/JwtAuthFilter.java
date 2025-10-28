@@ -71,8 +71,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
         // /api/v1/auth/login のリクエストはフィルタ対象外にする
-        return path.startsWith("/api/v1/auth/login") ||
-            path.startsWith("/api/v1/auth/refresh");
+        return path.startsWith("/api/v1/auth/login")
+         || path.startsWith("/api/v1/auth/refresh");
     }
 
 

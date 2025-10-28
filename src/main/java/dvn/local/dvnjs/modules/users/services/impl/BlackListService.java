@@ -85,7 +85,7 @@ public class BlackListService {
             // --- 5. 成功メッセージを返す ---
             return new MessageResource("トークンは正常にブラックリストへ登録されました。");
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             // --- 6. 予期しないエラーの処理 ---
             logger.error("ブラックリスト登録中にエラーが発生しました: {}", e.getMessage());
             return new MessageResource("ブラックリスト登録処理中にエラーが発生しました。 " + e.getMessage());

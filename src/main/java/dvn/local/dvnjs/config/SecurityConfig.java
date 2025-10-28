@@ -40,6 +40,11 @@ public class SecurityConfig {
                     "/api/v1/auth/login"            // ログイン用API
                         ).permitAll() // 上記のAPIは全てのユーザーにアクセスを許可
                 
+                // リフレッシュトークン発行用APIを認証なしでアクセスできるように設定
+                // アクセストークンが期限切れの時でも、このAPIは呼び出せるようにするため
+                .requestMatchers(
+                    "/api/v1/auth/refresh"            
+                        ).permitAll() 
                 // ② 公開ルート（認証不要のAPI）設定
                 .requestMatchers(
                     "/api/v1/products"   // 商品情報取得用API（誰でもアクセス可能）
