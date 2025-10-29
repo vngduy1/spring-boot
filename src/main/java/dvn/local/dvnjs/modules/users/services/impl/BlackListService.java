@@ -37,7 +37,7 @@ public class BlackListService {
     private JwtService jwtService;
 
     // ログ出力用のロガー
-    private static final Logger logger = LoggerFactory.getLogger(DatabaseSeeder.class);
+    private static final Logger logger = LoggerFactory.getLogger(BlackListService.class);
 
     /**
      * トークンをブラックリストに登録するメソッド。
@@ -52,7 +52,6 @@ public class BlackListService {
                 // 既に登録済みの場合は、処理を中断してメッセージを返す
                 return new MessageResource("トークンは既に登録されています。");
             }
-            logger.info("トークンの登録処理を開始します。");
 
             // --- 2. JWTトークンからクレーム情報を抽出 ---
             Claims claims = jwtService.getAllClaimsFromToken(request.getToken());
@@ -62,7 +61,7 @@ public class BlackListService {
 
             // トークンの有効期限を取得
             Date expiryDate = claims.getExpiration();
-
+            
             // --- 3. エンティティ作成 ---
             BlacklistedToken blacklistedToken = new BlacklistedToken();
 
@@ -79,8 +78,6 @@ public class BlackListService {
 
             // --- 4. データベースに保存 ---
             blacklistedTokenRepository.save(blacklistedToken);
-
-            logger.info("トークンをブラックリストに登録しました。");
 
             // --- 5. 成功メッセージを返す ---
             return new MessageResource("トークンは正常にブラックリストへ登録されました。");

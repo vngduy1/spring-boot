@@ -1,6 +1,7 @@
 package dvn.local.dvnjs.modules.users.requests;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 
 /**
  * ブラックリスト登録用のリクエストクラス。
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
  * クライアントから送信された JWT トークンを受け取るために使用される。
  * バリデーションアノテーションを使用して、空文字や null の入力を防ぐ。
  */
+@Data
 public class BlacklistTokenRequest {
     
     // トークンが空または null の場合はエラーメッセージを表示する
@@ -20,15 +22,15 @@ public class BlacklistTokenRequest {
      * トークンを取得する。
      * @return トークン文字列
      */
-    public String getToken() {
-        return token;
-    }
+    // public String getToken() {
+    //     return token;
+    // }
 
-    /** 
-     * トークンを設定する。
-     * @param token 登録するJWTトークン
-     */
-    public void setToken(String token) {
-        this.token = token;
-    }
+    // /** 
+    //  * トークンを設定する。
+    //  * @param token 登録するJWTトークン
+    //  */
+    // public void setToken(String token) {
+    //     this.token = token;
+    // }
 }

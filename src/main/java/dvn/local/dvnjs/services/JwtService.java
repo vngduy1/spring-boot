@@ -248,18 +248,11 @@ public class JwtService {
      * すべてのクレーム（Claims）を取得する内部ヘルパー。
      */
     public Claims getAllClaimsFromToken(String token) {
-        try {
             return Jwts.parserBuilder()
                     .setSigningKey(getSigningKey())
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
-        } catch (ExpiredJwtException e) {
-            return null;
-        } catch (JwtException e) {
-            logger.error("トークンが無効です: {}", e.getMessage());
-            return null;
-        }
     }
 
     /**
