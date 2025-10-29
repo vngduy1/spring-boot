@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import dvn.local.dvnjs.modules.users.entities.User;
 import dvn.local.dvnjs.modules.users.resources.UserResource;
 import dvn.local.dvnjs.modules.users.repositories.UserRepository;
-import dvn.local.dvnjs.resources.SuccessResource;
+import dvn.local.dvnjs.resources.ApiResource;
 
 @RestController // このクラスがREST APIのコントローラーであることを示す
 @RequestMapping("api/v1") // すべてのエンドポイントの共通パスのプレフィックスを定義
@@ -54,9 +54,9 @@ public class UserController {
         .email(user.getEmail())
         .name(user.getName())    
         .phone(user.getPhone())
-        .build();
-
-        SuccessResource<UserResource> response = new SuccessResource<>("SUCCESS", userResource);
+                .build();
+        
+        ApiResource<UserResource> response = ApiResource.ok(userResource, "Success");
 
         // --- HTTPステータス200（OK）でユーザー情報を返す ---
         return ResponseEntity.ok(response);

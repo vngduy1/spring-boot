@@ -26,6 +26,7 @@ import dvn.local.dvnjs.modules.users.resources.LoginResource;
 import dvn.local.dvnjs.modules.users.resources.RefreshTokenResource;
 import dvn.local.dvnjs.modules.users.services.impl.BlackListService;
 import dvn.local.dvnjs.modules.users.services.interfaces.UserServiceInterface;
+import dvn.local.dvnjs.resources.ApiResource;
 import dvn.local.dvnjs.resources.ErrorResource;
 import dvn.local.dvnjs.resources.MessageResource;
 import dvn.local.dvnjs.services.JwtService;
@@ -76,8 +77,9 @@ public class AuthController {
         // --- 認証成功時のレスポンス ---
         // LoginResourceのインスタンスが返ってきた場合（token + user情報）
         if (result instanceof LoginResource loginResource) {
+            ApiResource<LoginResource> response = ApiResource.ok(loginResource, "Success");
             // HTTPステータス200（OK）でレスポンスを返す
-            return ResponseEntity.ok(loginResource);
+            return ResponseEntity.ok(response);
         }
 
         // --- 認証失敗時のレスポンス ---
