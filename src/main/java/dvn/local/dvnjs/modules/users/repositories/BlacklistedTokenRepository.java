@@ -1,5 +1,7 @@
 package dvn.local.dvnjs.modules.users.repositories;
 
+import java.time.LocalDateTime;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,11 +16,7 @@ import dvn.local.dvnjs.modules.users.entities.BlacklistedToken;
 @Repository
 public interface BlacklistedTokenRepository extends JpaRepository<BlacklistedToken, Long> {
 
-    /**
-     * 指定されたトークンがデータベースに存在するかを確認するメソッド。
-     * 
-     * @param token チェック対象のJWTトークン文字列
-     * @return 存在する場合は true、存在しない場合は false
-     */
     boolean existsByToken(String token);
+
+    int deleteByExpiryDateBefore(LocalDateTime currentDateTime);
 }
