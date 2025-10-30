@@ -29,7 +29,7 @@ public class BlacklistedToken {
  
      // トークン文字列
      // nullを許可せず、同じ値を登録できないよう unique=true にする
-     @Column(nullable = false, unique = true)
+     @Column(nullable = false, unique = true, columnDefinition="TEXT")
      private String token;
  
      // トークンの有効期限

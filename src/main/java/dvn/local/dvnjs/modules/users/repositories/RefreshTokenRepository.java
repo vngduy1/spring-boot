@@ -1,5 +1,6 @@
 package dvn.local.dvnjs.modules.users.repositories;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,4 +43,6 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      * @return 一致するトークンが存在する場合は Optional にラップして返す
      */
     Optional<RefreshToken> findByUserId(Long userId);
+
+    int deleteByExpiryDateBefore(LocalDateTime currentDateTime);
 }

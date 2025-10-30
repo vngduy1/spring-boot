@@ -80,8 +80,12 @@ public class JwtService {
      * @param email  カスタムクレーム "email"
      * @return 署名済みのJWT（HS512）
      */
-    public String generateToken(Long userId, String email) {
+    public String generateToken(Long userId, String email, Long expirationTime) {
         Date now = new Date(); // 発行時刻
+
+        if (expirationTime != null) {
+            expirationTime = jwtConfig.getExpirationTime();
+        }
         Date expiryDate = new Date(now.getTime() + jwtConfig.getExpirationTime()); // 有効期限 = 現在 + 設定値
 
         // ビルダーで JWT を組み立て、署名して返却

@@ -4,9 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -17,6 +19,7 @@ import dvn.local.dvnjs.modules.users.resources.LoginResource;
 import dvn.local.dvnjs.modules.users.resources.UserResource;
 import dvn.local.dvnjs.modules.users.entities.User;
 import dvn.local.dvnjs.modules.users.repositories.UserRepository;
+import dvn.local.dvnjs.resources.ApiResource;
 import dvn.local.dvnjs.resources.ErrorResource;
 import dvn.local.dvnjs.services.JwtService;
 
@@ -34,6 +37,9 @@ public class UserService extends BaseService implements UserServiceInterface {
 
     @Autowired
     private UserRepository userRepository; // ユーザー情報を操作するリポジトリ
+
+    @Value("${jwt.defaultExpiration}")
+    private long defaultExpiration;
 
     /**
      * ユーザー認証処理を行うメソッド
@@ -59,7 +65,7 @@ public class UserService extends BaseService implements UserServiceInterface {
             }
 
             // --- JWTトークン生成 ---
-            String token = jwtService.generateToken(user.getId(), user.getEmail());
+            String token = jwtService.generateToken(user.getId(), user.getEmail(), defaultExpiration);
 
             String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail());
 
@@ -74,20 +80,10 @@ public class UserService extends BaseService implements UserServiceInterface {
             return new LoginResource(token, refreshToken, userResource);
 
         } catch (BadCredentialsException e) {
-            // --- 認証失敗時の処理 ---
             // エラーログを出力
             logger.error("認証処理中にエラーが発生しました。", e.getMessage());
 
-            // --- エラーレスポンスを作成 ---
-            Map<String, String> errors = new HashMap<>();
-            errors.put("message", e.getMessage());
-
-            ErrorResource errorResource = new ErrorResource(
-                    "認証処理中にエラーが発生しました。",
-                    errors);
-
-            // --- エラー内容を返す ---
-            return errorResource;
+            return ApiResource.error("AUTH_ERROR", e.getMessage(), HttpStatus.UNAUTHORIZED);
         }
     }
     

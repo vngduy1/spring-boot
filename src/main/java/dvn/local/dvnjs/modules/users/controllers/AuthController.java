@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import ch.qos.logback.core.subst.Token;
 import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 import dvn.local.dvnjs.modules.users.entities.RefreshToken;
 import dvn.local.dvnjs.modules.users.repositories.RefreshTokenRepository;
@@ -27,7 +26,6 @@ import dvn.local.dvnjs.modules.users.resources.RefreshTokenResource;
 import dvn.local.dvnjs.modules.users.services.impl.BlackListService;
 import dvn.local.dvnjs.modules.users.services.interfaces.UserServiceInterface;
 import dvn.local.dvnjs.resources.ApiResource;
-import dvn.local.dvnjs.resources.ErrorResource;
 import dvn.local.dvnjs.resources.MessageResource;
 import dvn.local.dvnjs.services.JwtService;
 
@@ -75,7 +73,6 @@ public class AuthController {
         Object result = userService.authenticate(request);
 
         // --- 認証成功時のレスポンス ---
-        // LoginResourceのインスタンスが返ってきた場合（token + user情報）
         if (result instanceof LoginResource loginResource) {
             ApiResource<LoginResource> response = ApiResource.ok(loginResource, "Success");
             // HTTPステータス200（OK）でレスポンスを返す
@@ -84,7 +81,8 @@ public class AuthController {
 
         // --- 認証失敗時のレスポンス ---
         // ErrorResourceのインスタンスが返ってきた場合（バリデーションまたは認証エラー）
-        if (result instanceof ErrorResource errorResource) {
+        if (result instanceof ApiResource errorResource) {
+
             // HTTPステータス422（Unprocessable Entity）でレスポンスを返す
             return ResponseEntity.unprocessableEntity().body(errorResource);
         }
@@ -94,9 +92,9 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("認証処理中にエラーが発生しました。");
     }
 
-    @PostMapping("blacklisted_tokens") 
     // POSTメソッドで /api/v1/auth/blacklisted_tokens にアクセスされたときに実行される。
     // ブラックリストにトークンを追加するためのAPIエンドポイント。
+    @PostMapping("blacklisted_tokens") 
     public ResponseEntity<?> addTokenToBlacklist(@Valid @RequestBody BlacklistTokenRequest request) {
         try {
             // BlackListServiceを呼び出してトークンを登録
@@ -106,9 +104,9 @@ public class AuthController {
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {
-            // 予期しないエラーが発生した場合、サーバーエラー(500)を返す
-            return ResponseEntity.internalServerError().body(
-                    new MessageResource("ネットワークエラーが発生しました。"));
+            ApiResource<Void> errorResponse = ApiResource.<Void>builder().success(false).message("network error!")
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
 
@@ -125,15 +123,17 @@ public class AuthController {
             request.setToken(token);
 
             // BlackListServiceを使ってトークンをブラックリストに登録
-            Object message = blackListService.create(request);
+            blackListService.create(request);
 
+            ApiResource<Void> successResponse = ApiResource.<Void>builder().success(true).message("logout successfully")
+                    .status(HttpStatus.OK).build();
             // 成功時にHTTPステータス200(OK)を返す
-            return ResponseEntity.ok(message);
+            return ResponseEntity.ok(successResponse);
 
         } catch (Exception e) {
-            // 例外が発生した場合、サーバーエラー(500)を返す
-            return ResponseEntity.internalServerError()
-                    .body(new MessageResource("ネットワークエラーが発生しました。"));
+            ApiResource<Void> errorResponse = ApiResource.<Void>builder().success(false).message("network error!")
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
 
@@ -171,7 +171,7 @@ public class AuthController {
             String email = dbRefreshToken.getUser().getEmail();
 
             // 新しいアクセストークンを生成
-            String newToken = jwtService.generateToken(userId, email);
+            String newToken = jwtService.generateToken(userId, email, null);
 
             // 新しいリフレッシュトークンを生成
             String newRefreshToken = jwtService.generateRefreshToken(userId, email);

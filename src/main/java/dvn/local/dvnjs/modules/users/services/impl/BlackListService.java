@@ -8,10 +8,13 @@ import org.springframework.stereotype.Service;
 import java.time.ZoneId;
 import java.util.Date;
 
+import org.springframework.http.HttpStatus;
+
 import dvn.local.dvnjs.databases.seeder.DatabaseSeeder;
 import dvn.local.dvnjs.modules.users.entities.BlacklistedToken;
 import dvn.local.dvnjs.modules.users.repositories.BlacklistedTokenRepository;
 import dvn.local.dvnjs.modules.users.requests.BlacklistTokenRequest;
+import dvn.local.dvnjs.resources.ApiResource;
 import dvn.local.dvnjs.resources.MessageResource;
 import dvn.local.dvnjs.services.JwtService;
 
@@ -50,7 +53,7 @@ public class BlackListService {
             // --- 1. トークンの重複チェック ---
             if (blacklistedTokenRepository.existsByToken(request.getToken())) {
                 // 既に登録済みの場合は、処理を中断してメッセージを返す
-                return new MessageResource("トークンは既に登録されています。");
+                return ApiResource.error("Tokken_ERROR", "token 既にある", HttpStatus.BAD_REQUEST);
             }
 
             // --- 2. JWTトークンからクレーム情報を抽出 ---
@@ -82,10 +85,9 @@ public class BlackListService {
             // --- 5. 成功メッセージを返す ---
             return new MessageResource("トークンは正常にブラックリストへ登録されました。");
 
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             // --- 6. 予期しないエラーの処理 ---
-            logger.error("ブラックリスト登録中にエラーが発生しました: {}", e.getMessage());
-            return new MessageResource("ブラックリスト登録処理中にエラーが発生しました。 " + e.getMessage());
+            return new MessageResource("error " + e.getMessage());
         }
     }
 }
