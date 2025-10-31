@@ -53,7 +53,7 @@ public class BlackListService {
             // --- 1. トークンの重複チェック ---
             if (blacklistedTokenRepository.existsByToken(request.getToken())) {
                 // 既に登録済みの場合は、処理を中断してメッセージを返す
-                return ApiResource.error("Tokken_ERROR", "token 既にある", HttpStatus.BAD_REQUEST);
+                return ApiResource.error("Token_ERROR", "token 既にある", HttpStatus.BAD_REQUEST);
             }
 
             // --- 2. JWTトークンからクレーム情報を抽出 ---
