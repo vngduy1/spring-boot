@@ -20,7 +20,6 @@ import dvn.local.dvnjs.modules.users.resources.UserResource;
 import dvn.local.dvnjs.modules.users.entities.User;
 import dvn.local.dvnjs.modules.users.repositories.UserRepository;
 import dvn.local.dvnjs.resources.ApiResource;
-import dvn.local.dvnjs.resources.ErrorResource;
 import dvn.local.dvnjs.services.JwtService;
 
 @Service // サービス層を表すアノテーション。ビジネスロジックを担当するクラス。
