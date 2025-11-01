@@ -14,17 +14,20 @@ import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 
+@Builder(toBuilder=true)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity // エンティティクラス（データベースのテーブルと対応）
-@Table(name = "users")
-
-public class UserCatalogues {
+@Table(name = "user_catalogues")
+public class UserCatalogue {
     @Id // 主キー（Primary Key）
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 自動採番（オートインクリメント）
     private Long id;
+
+    private String name;  //名前
 
     @Column(name = "publish", nullable = false, columnDefinition = "TINYINT")
     private Integer publish;

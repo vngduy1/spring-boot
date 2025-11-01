@@ -5,17 +5,10 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-import dvn.local.dvnjs.modules.users.entities.UserCatalogues;
+import dvn.local.dvnjs.modules.users.entities.UserCatalogue;
 
-
-/**
- * User エンティティに対するデータベース操作を行うリポジトリインターフェース。
- * 
- * Spring Data JPA の JpaRepository を継承しており、
- * CRUD 操作（作成、読み取り、更新、削除）が自動的に利用可能になる。
- */
 @Repository
-public interface UserCatalogueRepository extends JpaRepository<UserCatalogues, Long> {
+public interface UserCatalogueRepository extends JpaRepository<UserCatalogue, Long> {
 
     // Optional<UserCatalogues> findById(Long id);
 }
