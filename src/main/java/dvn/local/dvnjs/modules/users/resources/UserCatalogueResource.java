@@ -21,5 +21,5 @@ public class UserCatalogueResource {
     private final String name;
 
     // ユーザー名
-    private final String publish;
+    private final Integer publish;
 }

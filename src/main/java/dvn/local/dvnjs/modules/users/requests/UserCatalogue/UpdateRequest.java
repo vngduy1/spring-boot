@@ -9,7 +9,7 @@ import lombok.Data;
 // ログインリクエストを表すDTOクラス
 // クライアントから送信されたメールアドレスとパスワードを受け取るために使用
 @Data
-public class StoreRequest {
+public class UpdateRequest {
     
     // メールアドレス（ログインIDとして使用）
     @NotBlank(message = "空で禁止") // 空文字やnullは禁止
