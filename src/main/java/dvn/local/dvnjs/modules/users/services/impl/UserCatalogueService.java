@@ -11,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import dvn.local.dvnjs.helpers.FilterParameter;
 import dvn.local.dvnjs.modules.users.entities.UserCatalogue;
 import dvn.local.dvnjs.modules.users.repositories.UserCatalogueRepository;
 import dvn.local.dvnjs.modules.users.requests.UserCatalogue.StoreRequest;
@@ -39,6 +40,16 @@ public class UserCatalogueService extends BaseService implements UserCatalogueSe
         int perPage = parameters.containsKey("perpage") ? Integer.parseInt(parameters.get("perpage")[0]) : 20; // 1ページあたりの件数（デフォルト20）
         String sortParam = parameters.containsKey("sort") ? parameters.get("sort")[0] : null; // ソート条件
         Sort sort = createSort(sortParam); // BaseServiceからソートを生成
+
+        String keyword = FilterParameter.filterKeyword(parameters);
+        Map<String, String> simpleFilters = FilterParameter.filterSimple(parameters);
+        Map<String, Map<String, String>> filterComplex = FilterParameter.filterComplex(parameters);
+
+        logger.info("keyword: "+ keyword);
+        logger.info("simpleFilters: "+ simpleFilters);
+        logger.info("filterComplex: "+ filterComplex);
+
+
         Pageable pageable = PageRequest.of(page - 1, perPage, sort); // ページ情報を設定
 
         return userCatalogueRepository.findAll(pageable); // ページング付き検索を実行
