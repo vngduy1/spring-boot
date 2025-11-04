@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import dvn.local.dvnjs.helpers.FilterParameter;
@@ -18,6 +19,7 @@ import dvn.local.dvnjs.modules.users.requests.UserCatalogue.StoreRequest;
 import dvn.local.dvnjs.modules.users.requests.UserCatalogue.UpdateRequest;
 import dvn.local.dvnjs.modules.users.services.interfaces.UserCatalogueServiceInterface;
 import dvn.local.dvnjs.services.BaseService;
+import dvn.local.dvnjs.specifications.BaseSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
@@ -47,12 +49,16 @@ public class UserCatalogueService extends BaseService implements UserCatalogueSe
 
         logger.info("keyword: "+ keyword);
         logger.info("simpleFilters: "+ simpleFilters);
-        logger.info("filterComplex: "+ filterComplex);
+        logger.info("filterComplex: " + filterComplex);
 
+        Specification<UserCatalogue> specs = Specification.where(
+            BaseSpecification.<UserCatalogue>keyword(keyword, "name"))
+            .and(BaseSpecification.<UserCatalogue>whereSpec(simpleFilters))
+            .and(BaseSpecification.<UserCatalogue>complexWhereSpec(filterComplex));
 
         Pageable pageable = PageRequest.of(page - 1, perPage, sort); // ページ情報を設定
 
-        return userCatalogueRepository.findAll(pageable); // ページング付き検索を実行
+        return userCatalogueRepository.findAll(specs, pageable); // ページング付き検索を実行
     }
 
     /**
