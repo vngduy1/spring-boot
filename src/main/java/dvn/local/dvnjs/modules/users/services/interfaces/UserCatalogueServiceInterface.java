@@ -1,5 +1,6 @@
 package dvn.local.dvnjs.modules.users.services.interfaces;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
@@ -15,4 +16,5 @@ public interface UserCatalogueServiceInterface {
     UserCatalogue update(Long id, UpdateRequest request);
 
     Page<UserCatalogue> paginate(Map<String, String[]> parameters);
+    List<UserCatalogue> getAll(Map<String, String[]> parameters);
 }

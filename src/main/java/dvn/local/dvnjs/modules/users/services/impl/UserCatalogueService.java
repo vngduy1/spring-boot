@@ -1,5 +1,6 @@
 package dvn.local.dvnjs.modules.users.services.impl;
 
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -30,6 +31,23 @@ public class UserCatalogueService extends BaseService implements UserCatalogueSe
     private UserCatalogueRepository userCatalogueRepository; // データベース操作を行うリポジトリ
 
     private static final Logger logger = LoggerFactory.getLogger(UserCatalogueService.class); // ロガーの設定
+
+    @Override
+    public List<UserCatalogue> getAll(Map<String, String[]> parameters) {
+        String sortParam = parameters.containsKey("sort") ? parameters.get("sort")[0] : null; // ソート条件
+        Sort sort = createSort(sortParam); // BaseServiceからソートを生成
+
+        String keyword = FilterParameter.filterKeyword(parameters);
+        Map<String, String> simpleFilters = FilterParameter.filterSimple(parameters);
+        Map<String, Map<String, String>> filterComplex = FilterParameter.filterComplex(parameters);
+
+        Specification<UserCatalogue> specs = Specification.where(
+            BaseSpecification.<UserCatalogue>keyword(keyword, "name"))
+            .and(BaseSpecification.<UserCatalogue>whereSpec(simpleFilters))
+            .and(BaseSpecification.<UserCatalogue>complexWhereSpec(filterComplex));
+
+        return userCatalogueRepository.findAll(specs, sort);
+    }
 
     /**
      * ページネーション処理

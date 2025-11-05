@@ -1,6 +1,8 @@
 package dvn.local.dvnjs.modules.users.controllers;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,28 @@ public class UserCatalogueController {
         this.userCatalogueService = userCatalogueService;
     }
 
+    @GetMapping("user_catalogues/all")
+    public ResponseEntity<?> getMethodName(HttpServletRequest request) {
+        Map<String, String[]> parameters = request.getParameterMap();
+
+        // サービス層でページング処理を実行
+        List<UserCatalogue> userCatalogues = userCatalogueService.getAll(parameters);
+
+        // エンティティをリソース形式に変換
+        List<UserCatalogueResource> userCataloguesResource = userCatalogues.stream().map(userCatalogue -> UserCatalogueResource.builder()
+            .id(userCatalogue.getId())
+            .name(userCatalogue.getName())
+            .publish(userCatalogue.getPublish())
+            .build()
+        ).collect(Collectors.toList());
+
+        // API共通レスポンス形式で返却
+        ApiResource<List<UserCatalogueResource>> response = ApiResource.ok(userCataloguesResource, "SUCCESS");
+
+        return ResponseEntity.ok(response);
+    }
+    
+
     /**
      * 【GET】/api/v1/user_catalogues
      * 
@@ -53,7 +77,7 @@ public class UserCatalogueController {
      * @return ページング済みのUserCatalogueResourceリストをApiResource形式で返却
      */
     @GetMapping("/user_catalogues")
-    public ResponseEntity<?> index(HttpServletRequest request) {
+    public ResponseEntity<?> pagination(HttpServletRequest request) {
         // クエリパラメータをMap形式で取得
         Map<String, String[]> parameters = request.getParameterMap();
 
