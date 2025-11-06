@@ -2,10 +2,9 @@ package dvn.local.dvnjs.modules.users.controllers;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+// import org.slf4j.Logger;
+// import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import dvn.local.dvnjs.modules.users.entities.UserCatalogue;
+import dvn.local.dvnjs.modules.users.mappers.UserCatalogueMapper;
 import dvn.local.dvnjs.modules.users.requests.UserCatalogue.StoreRequest;
 import dvn.local.dvnjs.modules.users.requests.UserCatalogue.UpdateRequest;
 import dvn.local.dvnjs.modules.users.resources.UserCatalogueResource;
@@ -36,30 +36,37 @@ import jakarta.servlet.http.HttpServletRequest;
 public class UserCatalogueController {
     
     // ロガーの設定
-    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+    // private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     // サービス層の依存関係を注入
     private final UserCatalogueServiceInterface userCatalogueService;
 
-    // コンストラクタインジェクションでサービスを初期化
-    public UserCatalogueController(UserCatalogueServiceInterface userCatalogueService) {
-        this.userCatalogueService = userCatalogueService;
-    }
+    private final UserCatalogueMapper userCatalogueMapper;
 
-    @GetMapping("user_catalogues/all")
-    public ResponseEntity<?> getMethodName(HttpServletRequest request) {
+    // コンストラクタインジェクションでサービスを初期化
+    public UserCatalogueController(UserCatalogueServiceInterface userCatalogueService,
+            UserCatalogueMapper userCatalogueMapper) {
+        this.userCatalogueService = userCatalogueService;
+        this.userCatalogueMapper = userCatalogueMapper;
+    }
+    
+    /**
+     * 【GET】/api/v1/user_catalogues/list
+     * 
+     * ユーザー定義書の一覧を全件取得する。
+     * 
+     * @param request クエリパラメータを取得するためのリクエスト
+     * @return UserCatalogueResourceリストをApiResource形式で返却
+     */
+    @GetMapping("user_catalogues/list")
+    public ResponseEntity<?> list(HttpServletRequest request) {
         Map<String, String[]> parameters = request.getParameterMap();
 
         // サービス層でページング処理を実行
         List<UserCatalogue> userCatalogues = userCatalogueService.getAll(parameters);
 
         // エンティティをリソース形式に変換
-        List<UserCatalogueResource> userCataloguesResource = userCatalogues.stream().map(userCatalogue -> UserCatalogueResource.builder()
-            .id(userCatalogue.getId())
-            .name(userCatalogue.getName())
-            .publish(userCatalogue.getPublish())
-            .build()
-        ).collect(Collectors.toList());
+        List<UserCatalogueResource> userCataloguesResource = userCatalogueMapper.toList(userCatalogues);
 
         // API共通レスポンス形式で返却
         ApiResource<List<UserCatalogueResource>> response = ApiResource.ok(userCataloguesResource, "SUCCESS");
@@ -85,12 +92,7 @@ public class UserCatalogueController {
         Page<UserCatalogue> userCatalogues = userCatalogueService.paginate(parameters);
 
         // エンティティをリソース形式に変換
-        Page<UserCatalogueResource> userCataloguesResource = userCatalogues.map(userCatalogue -> UserCatalogueResource.builder()
-            .id(userCatalogue.getId())
-            .name(userCatalogue.getName())
-            .publish(userCatalogue.getPublish())
-            .build()
-        );
+        Page<UserCatalogueResource> userCataloguesResource = userCatalogueMapper.toResourcePage(userCatalogues);
 
         // API共通レスポンス形式で返却
         ApiResource<Page<UserCatalogueResource>> response = ApiResource.ok(userCataloguesResource, "SUCCESS");
@@ -111,17 +113,10 @@ public class UserCatalogueController {
 
         // サービス層で登録処理を実行
         UserCatalogue userCatalogue = userCatalogueService.create(request);
-
-        // レスポンス用オブジェクトを生成
-        UserCatalogueResource userCatalogueResource = UserCatalogueResource.builder()
-                .id(userCatalogue.getId())
-                .name(userCatalogue.getName())
-                .publish(userCatalogue.getPublish())
-                .build();
+        UserCatalogueResource userCatalogueResource = userCatalogueMapper.tResource(userCatalogue);
 
         // API共通レスポンスで返却
         ApiResource<UserCatalogueResource> response = ApiResource.ok(userCatalogueResource, "定義書が正常に追加されました。");
-        logger.info("success");
         return ResponseEntity.ok(response);
     }
     
@@ -148,14 +143,9 @@ public class UserCatalogueController {
             UserCatalogue userCatalogue = userCatalogueService.update(id, request);
 
             // レスポンス変換
-            UserCatalogueResource userCatalogueResource = UserCatalogueResource.builder()
-                    .id(userCatalogue.getId())
-                    .name(userCatalogue.getName())
-                    .publish(userCatalogue.getPublish())
-                    .build();
+            UserCatalogueResource userCatalogueResource = userCatalogueMapper.tResource(userCatalogue);
 
             ApiResource<UserCatalogueResource> response = ApiResource.ok(userCatalogueResource, "定義書が正常に更新されました。");
-            logger.info("success");
             return ResponseEntity.ok(response);
 
         } catch (EntityNotFoundException e) {
@@ -172,7 +162,7 @@ public class UserCatalogueController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ApiResource.error(
                     "INTERNAL_SERVER_ERROR",
-                    "Có lỗi xảy ra trong quá trình cập nhật", // ベトナム語のままでもOK
+                    "Có lỗi xảy ra trong quá trình cập nhật", 
                     HttpStatus.INTERNAL_SERVER_ERROR
                 )
             );
