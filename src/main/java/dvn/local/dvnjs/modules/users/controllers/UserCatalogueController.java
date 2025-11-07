@@ -3,6 +3,8 @@ package dvn.local.dvnjs.modules.users.controllers;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.catalina.connector.Response;
+import org.springframework.beans.factory.annotation.Autowired;
 // import org.slf4j.Logger;
 // import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import dvn.local.dvnjs.modules.users.entities.UserCatalogue;
 import dvn.local.dvnjs.modules.users.mappers.UserCatalogueMapper;
+import dvn.local.dvnjs.modules.users.repositories.UserCatalogueRepository;
 import dvn.local.dvnjs.modules.users.requests.UserCatalogue.StoreRequest;
 import dvn.local.dvnjs.modules.users.requests.UserCatalogue.UpdateRequest;
 import dvn.local.dvnjs.modules.users.resources.UserCatalogueResource;
@@ -24,11 +27,13 @@ import dvn.local.dvnjs.resources.ApiResource;
 
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import jakarta.validation.Valid;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+
 
 @Validated
 @RestController // このクラスがREST APIのコントローラーであることを示す
@@ -40,6 +45,9 @@ public class UserCatalogueController {
 
     // サービス層の依存関係を注入
     private final UserCatalogueServiceInterface userCatalogueService;
+
+    @Autowired
+    private UserCatalogueRepository userCatalogueRepository; // データベース操作を行うリポジトリ
 
     private final UserCatalogueMapper userCatalogueMapper;
 
@@ -58,7 +66,7 @@ public class UserCatalogueController {
      * @param request クエリパラメータを取得するためのリクエスト
      * @return UserCatalogueResourceリストをApiResource形式で返却
      */
-    @GetMapping("user_catalogues/list")
+    @GetMapping("api/v1")
     public ResponseEntity<?> list(HttpServletRequest request) {
         Map<String, String[]> parameters = request.getParameterMap();
 
@@ -110,14 +118,24 @@ public class UserCatalogueController {
      */
     @PostMapping("/user_catalogues")
     public ResponseEntity<?> create(@Valid @RequestBody StoreRequest request) {
+        try {
+            // サービス層で登録処理を実行
+            UserCatalogue userCatalogue = userCatalogueService.create(request);
+            UserCatalogueResource userCatalogueResource = userCatalogueMapper.tResource(userCatalogue);
+    
+            // API共通レスポンスで返却
+            ApiResource<UserCatalogueResource> response = ApiResource.ok(userCatalogueResource, "定義書が正常に追加されました。");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            String message ="Có lỗi xảy ra trong quá trình tạo mới" + e.getMessage();
+            // エラーハンドリング（必要に応じて詳細な処理を追加）
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResource.error(
+                            "INTERNAL_SERVER_ERROR",
+                            message,
+                            HttpStatus.INTERNAL_SERVER_ERROR));
+        }
 
-        // サービス層で登録処理を実行
-        UserCatalogue userCatalogue = userCatalogueService.create(request);
-        UserCatalogueResource userCatalogueResource = userCatalogueMapper.tResource(userCatalogue);
-
-        // API共通レスポンスで返却
-        ApiResource<UserCatalogueResource> response = ApiResource.ok(userCatalogueResource, "定義書が正常に追加されました。");
-        return ResponseEntity.ok(response);
     }
     
     /**
@@ -136,7 +154,7 @@ public class UserCatalogueController {
     @PutMapping("/user_catalogues/{id}")
     public ResponseEntity<?> update(
         @PathVariable Long id,
-        @Valid @RequestBody UpdateRequest request) {
+            @Valid @RequestBody UpdateRequest request) {
 
         try {
             // 更新処理を実行
@@ -151,21 +169,77 @@ public class UserCatalogueController {
         } catch (EntityNotFoundException e) {
             // 対象データが存在しない場合
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ApiResource.error(
-                    "NOT_FOUND",
-                    e.getMessage(),
-                    HttpStatus.NOT_FOUND
-                )
-            );
+                    ApiResource.error(
+                            "NOT_FOUND",
+                            e.getMessage(),
+                            HttpStatus.NOT_FOUND));
         } catch (Exception e) {
             // その他のエラー（サーバーエラー）
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ApiResource.error(
-                    "INTERNAL_SERVER_ERROR",
-                    "Có lỗi xảy ra trong quá trình cập nhật", 
-                    HttpStatus.INTERNAL_SERVER_ERROR
-                )
-            );
+                    ApiResource.error(
+                            "INTERNAL_SERVER_ERROR",
+                            "Có lỗi xảy ra trong quá trình cập nhật",
+                            HttpStatus.INTERNAL_SERVER_ERROR));
+        }
+    }
+
+    // 【GET】/api/v1/user_catalogues/{id}
+    @GetMapping("/user_catalogues/{id}")
+    public ResponseEntity<?> show(@PathVariable Long id) {
+        // 指定IDのユーザー定義書を取得
+        UserCatalogue userCatalogue = userCatalogueRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("UserCatalogue with ID " + id + " not found"));
+
+        UserCatalogueResource userCatalogueResource = userCatalogueMapper.tResource(userCatalogue); // エンティティをリソースに変換
+        // 返却用レスポンスを作成
+        ApiResource<UserCatalogueResource> response = ApiResource.ok(userCatalogueResource, "SUCCESS");
+        return ResponseEntity.ok(response);
+    }
+    
+    // 【DELETE】/api/v1/user_catalogues/{id}
+    @DeleteMapping("/user_catalogues/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        try {
+            userCatalogueService.delete(id); // サービス層で削除処理を実行
+            return ResponseEntity.ok(
+                    ApiResource.message("定義書が正常に削除されました。", HttpStatus.OK)); // 成功レスポンスを返却
+        } catch (EntityNotFoundException e) {
+            // 対象データが存在しない場合
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResource.error(
+                            "NOT_FOUND",
+                            e.getMessage(),
+                            HttpStatus.NOT_FOUND));
+        } catch (Exception e) {
+            // その他のエラー（サーバーエラー）
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResource.error(
+                            "INTERNAL_SERVER_ERROR",
+                            "Có lỗi xảy ra trong quá trình xóa",
+                            HttpStatus.INTERNAL_SERVER_ERROR));
+        }
+    }
+
+    @DeleteMapping("/user_catalogues")
+    public ResponseEntity<?> deleteMany(@RequestBody List<Long> ids) {
+        try {
+            userCatalogueService.deleteMultipleEntity(ids); // サービス層で削除処理を実行
+            return ResponseEntity.ok(
+                    ApiResource.message("選択された定義書が正常に削除されました。", HttpStatus.OK)); // 成功レスポンスを返却
+        } catch (EntityNotFoundException e) {
+            // 対象データが存在しない場合
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResource.error(
+                            "NOT_FOUND",
+                            e.getMessage(),
+                            HttpStatus.NOT_FOUND));
+        } catch (Exception e) {
+            // その他のエラー（サーバーエラー）
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ApiResource.error(
+                            "INTERNAL_SERVER_ERROR",
+                            "Có lỗi xảy ra trong quá trình xóa",
+                            HttpStatus.INTERNAL_SERVER_ERROR));
         }
     }
 }
