@@ -94,12 +94,8 @@ public class UserCatalogueService extends BaseService implements UserCatalogueSe
     @Override
     @Transactional
     public UserCatalogue create(StoreRequest request) {
-        try {
-            UserCatalogue payload = userCatalogueMapper.toEntity(request); // リクエストからエンティティを生成
-            return userCatalogueRepository.save(payload); // データを保存
-        } catch (Exception e) {
-            throw new RuntimeException("トランザクションに失敗しました: " + e.getMessage()); // 例外を再スロー
-        }
+        UserCatalogue payload = userCatalogueMapper.toEntity(request); // リクエストからエンティティを生成
+        return userCatalogueRepository.save(payload); // データを保存
     }
 
     /**
@@ -110,15 +106,32 @@ public class UserCatalogueService extends BaseService implements UserCatalogueSe
     @Override
     @Transactional
     public UserCatalogue update(Long id, UpdateRequest request) {
-
         // 対象データを取得。存在しなければ例外をスロー
         UserCatalogue userCatalogue = userCatalogueRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("対象データが存在しません"));
-
         // リクエストデータでエンティティを更新
         userCatalogueMapper.updateEntityFromResource(request, userCatalogue);
-
         // 更新データを保存
         return userCatalogueRepository.save(userCatalogue);
+    }
+
+    @Override
+    @Transactional
+    public Boolean delete(Long id) {
+        UserCatalogue userCatalogue = userCatalogueRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("対象データが存在しません"));
+            userCatalogueRepository.delete(userCatalogue); // データを削除
+            return true; // 削除成功
+    }
+
+    @Override
+    @Transactional
+    public Boolean deleteMultipleEntity(List<Long> ids) {
+        List<UserCatalogue> userCatalogues = userCatalogueRepository.findAllById(ids);
+        if(userCatalogues.size() != ids.size()) {
+            throw new EntityNotFoundException("削除対象のデータが存在しません");
+        }
+        userCatalogueRepository.deleteAll(userCatalogues);
+        return true; // 削除成功
     }
 }
