@@ -20,7 +20,7 @@ import dvn.local.dvnjs.resources.ApiResource;
 import dvn.local.dvnjs.services.JwtService;
 
 @Service // サービス層を表すアノテーション。ビジネスロジックを担当するクラス。
-public class UserService extends BaseService implements UserServiceInterface {
+public class UserService implements UserServiceInterface {
 
     // ログ出力用のロガー定義
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
