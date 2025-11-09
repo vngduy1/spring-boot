@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import dvn.local.dvnjs.helpers.FilterParameter;
 import dvn.local.dvnjs.mappers.BaseMapper;
-import dvn.local.dvnjs.modules.users.entities.UserCatalogue;
 import dvn.local.dvnjs.specifications.BaseSpecification;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
