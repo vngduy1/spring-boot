@@ -1,0 +1,75 @@
+// package dvn.local.dvnjs.modules.users.entities;
+
+// import dvn.local.dvnjs.entities.BaseEntity;
+// import jakarta.persistence.Entity;
+// import jakarta.persistence.Table;
+// import lombok.Data;
+// import lombok.EqualsAndHashCode;
+// import lombok.experimental.SuperBuilder;
+
+// /*
+//  * Permissionエンティティクラス
+//  */
+// @SuperBuilder
+// @Data
+// @EqualsAndHashCode(callSuper = true)
+// @Entity
+// @Table(name = "permissions")
+// public class Permission extends BaseEntity {
+// }
+
+
+package dvn.local.dvnjs.modules.users.entities;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+@Builder(toBuilder=true)
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity // エンティティクラス（データベースのテーブルと対応）
+@Table(name = "permissions") // テーブル名を指定
+public class Permission {
+    @Id // 主キー（Primary Key）
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // 自動採番（オートインクリメント）
+    private Long id;
+
+    private String name;  //名前
+
+    @Column(name = "publish", nullable = false, columnDefinition = "TINYINT")
+    private Integer publish;
+
+    // 作成日時（新規登録時のみ設定）
+    @Column(name="created_at", updatable=false)
+    private LocalDateTime createdAt;
+
+    // 更新日時（更新時のみ設定）
+    @Column(name="updated_at")
+    private LocalDateTime updatedAt;
+
+    // レコード作成前に呼び出される（作成日時を自動設定）
+    @PrePersist
+    protected void onCreated() {
+        createdAt = LocalDateTime.now();
+    }
+
+    // レコード更新前に呼び出される（更新日時を自動設定）
+    @PreUpdate
+    protected void onUpdated() {
+        updatedAt = LocalDateTime.now();
+    }
+}

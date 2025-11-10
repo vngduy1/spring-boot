@@ -16,10 +16,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import dvn.local.dvnjs.mappers.BaseMapper;
-import dvn.local.dvnjs.modules.users.entities.UserCatalogue;
-import dvn.local.dvnjs.modules.users.requests.UserCatalogue.StoreRequest;
-import dvn.local.dvnjs.modules.users.requests.UserCatalogue.UpdateRequest;
-import dvn.local.dvnjs.modules.users.resources.UserCatalogueResource;
 import dvn.local.dvnjs.modules.users.services.interfaces.BaseServiceInterface;
 import dvn.local.dvnjs.resources.ApiResource;
 import jakarta.persistence.EntityNotFoundException;
