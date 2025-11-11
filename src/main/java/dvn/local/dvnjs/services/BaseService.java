@@ -1,8 +1,14 @@
 package dvn.local.dvnjs.services;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -12,10 +18,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Service;
 
+import dvn.local.dvnjs.cronjob.BlacklistTokenClean;
 import dvn.local.dvnjs.helpers.FilterParameter;
 import dvn.local.dvnjs.mappers.BaseMapper;
 import dvn.local.dvnjs.specifications.BaseSpecification;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 
 @Service // 共通のサービスクラスとしてSpringに登録
@@ -25,10 +34,19 @@ public abstract class BaseService<
         C, 
         U,
         R extends JpaRepository<T, Long> & JpaSpecificationExecutor<T>
-    > {
+> {
+    
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    // ロガーの設定
+    private static final Logger logger = LoggerFactory.getLogger(BlacklistTokenClean.class);
 
     // 抽象メソッド：サブクラスで実装する必要がある
     protected abstract String[] getSearchFields();
+    protected String[] getRelations() {
+        return new String[0]; // デフォルトでは関連エンティティなし
+    }
     protected abstract R getRepository();
     protected abstract M getMapper();
 
@@ -49,11 +67,45 @@ public abstract class BaseService<
         return getRepository().findAll(specs, pageable); // ページング付き検索を実行
     }
     
+    private void handleManyToManyRelations(T entity, Object request) {
+        String[] relations = getRelations();
+        if (relations != null && relations.length > 0) {
+            for (String relation : relations) {
+                try {
+                    Field relationField = request.getClass().getDeclaredField(relation); // リクエストオブジェクトからフィールドを取得
+                    relationField.setAccessible(true); // アクセス制御を解除
+
+                    @SuppressWarnings("unchecked")
+                    List<Long> relatedIds = (List<Long>) relationField.get(request); // 関連エンティティのIDリストを取得
+                    if (relatedIds != null && !relatedIds.isEmpty()) {
+                        // エンティティの関連フィールドにIDリストを設定
+                        Field entityRelationField = entity.getClass().getDeclaredField(relation);
+                        entityRelationField.setAccessible(true);
+
+                        ParameterizedType setType = (ParameterizedType) entityRelationField.getGenericType();
+                        Class<?> relatedEntityClass = (Class<?>) setType.getActualTypeArguments()[0];
+                        String repositoryName = relatedEntityClass.getSimpleName() + "Repository";
+                        repositoryName = Character.toLowerCase(repositoryName.charAt(0)) + repositoryName.substring(1);
+                        @SuppressWarnings("unchecked")
+                        JpaRepository<?, Long> repository = (JpaRepository<?, Long>) applicationContext
+                                .getBean(repositoryName);
+                        
+                    }
+                } catch (Exception e) {
+                    // フィールドが存在しない場合やアクセスできない場合は無視
+                    logger.warn("Relation field '{}' not found or inaccessible in request object.", relation, e);
+                }
+            }
+        }
+    }
+
     // 共通の新規登録メソッド
     @Transactional
     public T create(C request) {
         T payload = getMapper().toEntity(request); // リクエストからエンティティを生成
-        return getRepository().save(payload); // データを保存
+        T entity = getRepository().save(payload); // データを保存
+        handleManyToManyRelations(entity, request);
+        return entity; // データを保存
     }
 
     // 共通の更新メソッド

@@ -1,12 +1,16 @@
 package dvn.local.dvnjs.modules.users.entities;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -27,7 +31,16 @@ public class UserCatalogue {
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 自動採番（オートインクリメント）
     private Long id;
 
-    private String name;  //名前
+    private String name; //名前
+
+    // 権限との多対多の関係を定義
+    @ManyToMany
+    @JoinTable(
+        name = "user_catalogue_permissions",
+        joinColumns = @JoinColumn(name = "user_catalogue_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    private Set<Permission> permissions; // 権限の集合
 
     @Column(name = "publish", nullable = false, columnDefinition = "TINYINT")
     private Integer publish;
