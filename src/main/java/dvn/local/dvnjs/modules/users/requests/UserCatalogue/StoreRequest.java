@@ -1,5 +1,7 @@
 package dvn.local.dvnjs.modules.users.requests.UserCatalogue;
 
+import java.util.List;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
@@ -20,4 +22,7 @@ public class StoreRequest {
     @Min(value = 0, message="0からの値を入力してください。")
     @Max(value = 2, message="2の値を入力してください。")
     private Integer publish;
+
+    @NotNull(message = "権限が空禁止") // 空やnullを禁止
+    private List<Long> permissions;
 }

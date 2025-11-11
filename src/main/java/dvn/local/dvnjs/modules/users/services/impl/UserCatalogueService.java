@@ -15,9 +15,6 @@ import dvn.local.dvnjs.modules.users.requests.UserCatalogue.StoreRequest;
 import dvn.local.dvnjs.modules.users.requests.UserCatalogue.UpdateRequest;
 import dvn.local.dvnjs.modules.users.services.interfaces.UserCatalogueServiceInterface;
 import dvn.local.dvnjs.services.BaseService;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
-
 @Service // このクラスは「サービス層」としてSpringコンテナに登録される
 public class UserCatalogueService extends BaseService <UserCatalogue, UserCatalogueMapper, StoreRequest, UpdateRequest, UserCatalogueRepository> implements UserCatalogueServiceInterface {
 
@@ -41,8 +38,8 @@ public class UserCatalogueService extends BaseService <UserCatalogue, UserCatalo
     }
 
     @Override
-    protected UserCatalogueMapper getMapper() {
-        return userCatalogueMapper; // マッパーを返す
+    protected String[] getRelations() {
+        return new String[] { "permissions" }; // 関連エンティティを指定
     }
 
     // コンストラクタインジェクションでサービスを初期化
@@ -50,40 +47,10 @@ public class UserCatalogueService extends BaseService <UserCatalogue, UserCatalo
         this.userCatalogueMapper = userCatalogueMapper;
     }
 
-    /**
-     * 更新処理
-     * - 指定IDのデータを取得し、存在しない場合はEntityNotFoundExceptionをスロー
-     * - 更新後のデータを保存
-     */
-    // @Override
-    // @Transactional
-    // public UserCatalogue update(Long id, UpdateRequest request) {
-    //     // 対象データを取得。存在しなければ例外をスロー
-    //     UserCatalogue userCatalogue = userCatalogueRepository.findById(id)
-    //             .orElseThrow(() -> new EntityNotFoundException("対象データが存在しません"));
-    //     // リクエストデータでエンティティを更新
-    //     userCatalogueMapper.updateEntityFromResource(request, userCatalogue);
-    //     // 更新データを保存
-    //     return userCatalogueRepository.save(userCatalogue);
-    // }
+    // マッパーを返す抽象メソッドの実装
+    @Override
+    protected UserCatalogueMapper getMapper() {
+        return userCatalogueMapper; // マッパーを返す
+    }
 
-    // @Override
-    // @Transactional
-    // public Boolean delete(Long id) {
-    //     UserCatalogue userCatalogue = userCatalogueRepository.findById(id)
-    //                 .orElseThrow(() -> new EntityNotFoundException("対象データが存在しません"));
-    //         userCatalogueRepository.delete(userCatalogue); // データを削除
-    //         return true; // 削除成功
-    // }
-
-    // @Override
-    // @Transactional
-    // public Boolean deleteMultipleEntity(List<Long> ids) {
-    //     List<UserCatalogue> userCatalogues = userCatalogueRepository.findAllById(ids);
-    //     if(userCatalogues.size() != ids.size()) {
-    //         throw new EntityNotFoundException("削除対象のデータが存在しません");
-    //     }
-    //     userCatalogueRepository.deleteAll(userCatalogues);
-    //     return true; // 削除成功
-    // }
 }
