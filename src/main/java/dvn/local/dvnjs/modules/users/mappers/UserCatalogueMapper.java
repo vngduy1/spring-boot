@@ -21,12 +21,14 @@ public interface UserCatalogueMapper
     @Override
     @BaseMapperAnnotation
     @Mapping(target = "permissions", ignore = true)
+    @Mapping(target = "users", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy=NullValuePropertyMappingStrategy.IGNORE)
     UserCatalogue toEntity(StoreRequest createRequest);
 
     @Override
     @BaseMapperAnnotation
     @Mapping(target = "permissions", ignore = true)
+    @Mapping(target = "users", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy=NullValuePropertyMappingStrategy.IGNORE)
     void updateEntityFromResource(UpdateRequest updateRequest,@MappingTarget UserCatalogue entity);
 }
