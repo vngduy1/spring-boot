@@ -25,4 +25,7 @@ public class StoreRequest {
 
     @NotNull(message = "権限が空禁止") // 空やnullを禁止
     private List<Long> permissions;
+
+    @NotNull(message = "権限が空禁止") // 空やnullを禁止
+    private List<Long> users;
 }

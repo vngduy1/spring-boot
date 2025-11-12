@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import dvn.local.dvnjs.modules.users.entities.Permission;
 
-@Repository
+@Repository("permissionRepository")
 public interface PermissionRepository extends JpaRepository<Permission, Long>, JpaSpecificationExecutor<Permission> {
 
     // Optional<UserCatalogues> findById(Long id);

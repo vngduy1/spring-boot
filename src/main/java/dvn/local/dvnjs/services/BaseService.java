@@ -4,6 +4,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +24,7 @@ import dvn.local.dvnjs.cronjob.BlacklistTokenClean;
 import dvn.local.dvnjs.helpers.FilterParameter;
 import dvn.local.dvnjs.mappers.BaseMapper;
 import dvn.local.dvnjs.specifications.BaseSpecification;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 
 @Service // 共通のサービスクラスとしてSpringに登録
@@ -67,10 +67,11 @@ public abstract class BaseService<
         return getRepository().findAll(specs, pageable); // ページング付き検索を実行
     }
     
+    // ManyToManyリレーションの処理
     private void handleManyToManyRelations(T entity, Object request) {
-        String[] relations = getRelations();
-        if (relations != null && relations.length > 0) {
-            for (String relation : relations) {
+        String[] relations = getRelations();  // 関連エンティティのフィールド名リスト
+        if (relations != null && relations.length > 0) {  // 関連エンティティが存在する場合
+            for (String relation : relations) {  // 各関連エンティティについて処理
                 try {
                     Field relationField = request.getClass().getDeclaredField(relation); // リクエストオブジェクトからフィールドを取得
                     relationField.setAccessible(true); // アクセス制御を解除
@@ -80,20 +81,23 @@ public abstract class BaseService<
                     if (relatedIds != null && !relatedIds.isEmpty()) {
                         // エンティティの関連フィールドにIDリストを設定
                         Field entityRelationField = entity.getClass().getDeclaredField(relation);
-                        entityRelationField.setAccessible(true);
+                        entityRelationField.setAccessible(true);  // アクセス制御を解除
 
-                        ParameterizedType setType = (ParameterizedType) entityRelationField.getGenericType();
-                        Class<?> relatedEntityClass = (Class<?>) setType.getActualTypeArguments()[0];
-                        String repositoryName = relatedEntityClass.getSimpleName() + "Repository";
+                        ParameterizedType setType = (ParameterizedType) entityRelationField.getGenericType(); // フィールドの型情報を取得
+                        Class<?> relatedEntityClass = (Class<?>) setType.getActualTypeArguments()[0]; // 関連エンティティのクラスを取得
+                        String repositoryName = relatedEntityClass.getSimpleName() + "Repository"; // リポジトリ名を生成
+                        // 先頭文字を小文字に変換
                         repositoryName = Character.toLowerCase(repositoryName.charAt(0)) + repositoryName.substring(1);
                         @SuppressWarnings("unchecked")
-                        JpaRepository<?, Long> repository = (JpaRepository<?, Long>) applicationContext
-                                .getBean(repositoryName);
-                        
+                        JpaRepository<T, Long> repository = (JpaRepository<T, Long>) applicationContext 
+                                .getBean(repositoryName);  // リポジトリを取得
+                        List<T> entities = repository.findAllById(relatedIds);  // 関連エンティティをIDリストで取得
+                        Set<T> entitySet = new HashSet<>(entities); // Setに変換して重複を排除
+                        entityRelationField.set(entity, entitySet); // エンティティの関連フィールドに設定
                     }
-                } catch (Exception e) {
-                    // フィールドが存在しない場合やアクセスできない場合は無視
-                    logger.warn("Relation field '{}' not found or inaccessible in request object.", relation, e);
+                } catch (NoSuchFieldException | IllegalAccessException e) {
+                    // エラー処理
+                    logger.error("ManyToManyリレーションの処理中にエラーが発生しました: " + e.getMessage());
                 }
             }
         }
@@ -116,8 +120,10 @@ public abstract class BaseService<
                 .orElseThrow(() -> new EntityNotFoundException("対象データが存在しません"));
         // リクエストデータでエンティティを更新
         getMapper().updateEntityFromResource(request, entity);
+        T entityUpdate = getRepository().save(entity); // 一旦保存してからManyToManyを処理
+        handleManyToManyRelations(entityUpdate, request);  // ManyToManyリレーションの処理
         // 更新データを保存
-        return getRepository().save(entity);
+        return entityUpdate;
     }
 
     // 共通の削除メソッド

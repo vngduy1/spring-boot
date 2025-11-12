@@ -36,11 +36,19 @@ public class UserCatalogue {
     // 権限との多対多の関係を定義
     @ManyToMany
     @JoinTable(
-        name = "user_catalogue_permissions",
+        name = "user_catalogues_permission",
         joinColumns = @JoinColumn(name = "user_catalogue_id"),
-        inverseJoinColumns = @JoinColumn(name = "permission_id")
+        inverseJoinColumns = @JoinColumn(name = "permissions_id")
     )
     private Set<Permission> permissions; // 権限の集合
+
+    @ManyToMany
+    @JoinTable(
+        name = "user_catalogues_permission",
+        joinColumns = @JoinColumn(name = "user_catalogue_id"),
+        inverseJoinColumns = @JoinColumn(name = "permissions_id")
+    )
+    private Set<User> users; // ユーザーの集合
 
     @Column(name = "publish", nullable = false, columnDefinition = "TINYINT")
     private Integer publish;
