@@ -9,10 +9,10 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 // import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import dvn.local.dvnjs.mappers.BaseMapper;
@@ -30,7 +30,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * M: マッパーの型
  * S: サービスインターフェースの型
  */
-@MockitoBean
 public abstract class BaseControllerTest <
     E,
     R, 
@@ -44,11 +43,17 @@ public abstract class BaseControllerTest <
     @Autowired
     protected MockMvc mockMvc;
 
-    @MockitoBean
+    @MockBean
     protected S service;
 
-    @MockitoBean
+    @MockBean
     protected M mapper;
+
+    // @MockBean
+    // protected EntityManagerFactory entityManagerFactory;
+
+    // @MockBean
+    // protected EntityManager entityManager;
 
     protected abstract String getApiPath();
     protected abstract List<E> createTestEntities();

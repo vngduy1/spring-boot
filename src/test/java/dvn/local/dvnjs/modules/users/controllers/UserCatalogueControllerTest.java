@@ -4,9 +4,15 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 
+import dvn.local.dvnjs.config.SecurityConfig;
 import dvn.local.dvnjs.controllers.BaseControllerTest;
+import dvn.local.dvnjs.helpers.JwtAuthFilter;
 import dvn.local.dvnjs.modules.users.entities.UserCatalogue;
 import dvn.local.dvnjs.modules.users.mappers.UserCatalogueMapper;
 import dvn.local.dvnjs.modules.users.repositories.UserCatalogueRepository;
@@ -15,7 +21,15 @@ import dvn.local.dvnjs.modules.users.requests.UserCatalogue.UpdateRequest;
 import dvn.local.dvnjs.modules.users.resources.UserCatalogueResource;
 import dvn.local.dvnjs.modules.users.services.interfaces.UserCatalogueServiceInterface;
 
-@WebMvcTest(controllers = UserCatalogueController.class)
+@WebMvcTest(
+    value = UserCatalogueController.class,
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = {JwtAuthFilter.class, SecurityConfig.class}
+    )
+)
+@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureDataJpa
 public class UserCatalogueControllerTest extends BaseControllerTest<
     UserCatalogue,
     UserCatalogueResource,
@@ -29,7 +43,7 @@ public class UserCatalogueControllerTest extends BaseControllerTest<
     
     @Override
     protected String getApiPath() {
-        return "/api/user-catalogues";
+        return "/api/v1/user_catalogues";
     }
 
     @Override
